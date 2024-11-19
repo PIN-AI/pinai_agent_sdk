@@ -41,7 +41,7 @@ class PINAIIntentSDK:
     ) -> Dict:
         """注册新的 agent"""
         agent_data = {
-            "id": f"{name.lower().replace(' ', '_')}_{datetime.now().timestamp()}",
+            "id": f"{category}_{name.lower().replace(' ', '_')}",
             "name": name,
             "category": category,
             "description": description,

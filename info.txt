@@ -1,0 +1,15 @@
+pip install twine build
+python -m build
+python -m twine upload dist/*
+需要的 key： pypi-AgEIcHlwaS5vcmcCJDg5MjY4ZTVmLTBkMzUtNGE1Ny04OGU1LTU4ZTI3MTJlM2Y2OAACKlszLCI0ZDc5YzcxMy1mOGVlLTRjYmYtYWNmNy0yZTAxODUzNWE3NTgiXQAABiBSat9D-VdmhLFu4IKKi3FBiuyIJmxIXNtSdcC738AUEA
+
+# 项目
+https://pypi.org/project/pinai-intent-sdk/#description
+
+#管理
+https://pypi.org/manage/projects/
+smile-pinai/5211314Pinai*
+
+# 安装
+pip uninstall pinai-intent-sdk
+pip install pinai-intent-sdk==0.1.3 --no-cache-dir
