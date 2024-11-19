@@ -29,3 +29,6 @@ echo "上传完成！"
 git add .
 git commit -m "bump version to $NEW_VERSION"
 # git push 
+
+pip uninstall pinai-intent-sdk
+pip install pinai-intent-sdk==$NEW_VERSION --no-cache-dir
