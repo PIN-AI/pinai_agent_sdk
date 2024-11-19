@@ -17,7 +17,7 @@ from datetime import datetime
 # Initialize SDK
 sdk = PINAIIntentSDK(
     base_url="https://ifemsp3wkd.us-east-1.awsapprunner.com/",
-    api_key="your-api-key"
+    api_key="your-hipin-api-key"
 )
 
 # Register a new agent
