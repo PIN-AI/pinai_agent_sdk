@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="pinai-intent-sdk",
-    version="0.1.4",
+    version="0.1.5",
     packages=find_packages(),
     install_requires=requirements,
     author="smile",
