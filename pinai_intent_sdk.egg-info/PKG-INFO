@@ -1,0 +1,68 @@
+Metadata-Version: 2.1
+Name: pinai-intent-sdk
+Version: 0.1.3
+Summary: SDK for PINAI Intent Match API
+Home-page: https://pinai.io
+Author: smile
+Author-email: smile@pinai.io
+Project-URL: Bug Tracker, https://github.com/yourusername/pinai-intent-sdk/issues
+Project-URL: Documentation, https://docs.pinai.io
+Project-URL: Source Code, https://github.com/yourusername/pinai-intent-sdk
+Keywords: pinai,intent,sdk,api,machine learning,ai
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: fastapi>=0.68.0
+Requires-Dist: uvicorn>=0.15.0
+Requires-Dist: pydantic>=1.8.0
+Requires-Dist: requests>=2.26.0
+Requires-Dist: python-dotenv>=0.19.0
+
+# PINAI Intent SDK
+
+PINAI Intent SDK 是一个用于与 PINAI Intent Match API 交互的 Python 客户端库。
+
+## 安装
+
+```bash
+pip install pinai-intent-sdk
+```
+
+## 快速开始
+
+```python
+from pinai_intent_sdk import PINAIIntentSDK
+
+# 初始化 SDK
+sdk = PINAIIntentSDK(base_url="https://api.pinai.io", api_key="your-api-key")
+
+# 注册新的 agent
+agent = sdk.register_agent(
+    name="My Agent",
+    category="general",
+    description="A general purpose agent",
+    api_endpoint="https://my-agent-endpoint.com",
+    capabilities=["text", "image"],
+    pricing_model={"per_request": 0.001},
+    response_time=1.0
+)
+```
+
+## 功能特性
+
+- Agent 注册与管理
+- Agent 性能指标监控
+- 支持多种过滤条件的 Agent 查询
+
+## 文档
+
+详细文档请访问 [https://docs.pinai.io](https://docs.pinai.io)
+```
