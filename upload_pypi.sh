@@ -30,5 +30,5 @@ git add .
 git commit -m "bump version to $NEW_VERSION"
 # git push 
 
-pip uninstall pinai-intent-sdk
-pip install pinai-intent-sdk==$NEW_VERSION --no-cache-dir
+pip uninstall pinai-agent-sdk
+pip install pinai-agent-sdk==$NEW_VERSION --no-cache-dir

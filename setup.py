@@ -7,20 +7,20 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
-    name="pinai-intent-sdk",
+    name="pinai-agent-sdk",
     version="0.1.5",
     packages=find_packages(),
     install_requires=requirements,
     author="smile",
     author_email="smile@pinai.io",
-    description="SDK for PINAI Intent Match API",
+    description="SDK for PINAI Agent API",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://pinai.io",
     project_urls={
-        "Bug Tracker": "https://github.com/yourusername/pinai-intent-sdk/issues",
+        "Bug Tracker": "https://github.com/yourusername/pinai-agent-sdk/issues",
         "Documentation": "https://docs.pinai.io",
-        "Source Code": "https://github.com/yourusername/pinai-intent-sdk",
+        "Source Code": "https://github.com/yourusername/pinai-agent-sdk",
     },
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -33,5 +33,5 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.10",
-    keywords="pinai, intent, sdk, api, machine learning, ai",
+    keywords="pinai, agent, sdk, api, machine learning, ai",
 ) 
