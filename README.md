@@ -1,6 +1,6 @@
 # PINAI Intent SDK
 
-PINAI Intent SDK is a Python client library for interacting with the PINAI Intent Match API.
+PINAI Intent SDK is a Python client library for interacting with the PINAI Intent Match API and blockchain-based agent registration.
 
 ## Installation
 
@@ -14,13 +14,21 @@ pip install pinai-intent-sdk
 from pinai_intent_sdk import PINAIIntentSDK
 from datetime import datetime
 
-# Initialize SDK
+# Initialize SDK with HTTP API only
 sdk = PINAIIntentSDK(
     base_url="https://ifemsp3wkd.us-east-1.awsapprunner.com/",
     api_key="your-hipin-api-key"
 )
 
-# Register a new agent
+# Initialize SDK with blockchain support
+sdk_with_blockchain = PINAIIntentSDK(
+    base_url="https://ifemsp3wkd.us-east-1.awsapprunner.com/",
+    api_key="your-hipin-api-key",
+    privatekey="your-ethereum-private-key",  # Optional: For blockchain integration
+    blockchainRPC="https://sepolia.base.org"  # Optional: Custom RPC endpoint
+)
+
+# Register a new agent (HTTP API only)
 agent = sdk.register_agent(
     name="My Agent",
     category="general",
@@ -31,6 +39,20 @@ agent = sdk.register_agent(
     response_time=1.0,
     availability=1.0,
     metadata={"version": "1.0"}
+)
+
+# Register a new agent with blockchain integration
+agent_with_blockchain = sdk_with_blockchain.register_agent(
+    name="My Blockchain Agent",
+    category="general",
+    description="A blockchain-enabled agent",
+    api_endpoint="https://my-agent-endpoint.com",
+    capabilities=["text", "image"],
+    pricing_model={"per_request": 0.001},
+    response_time=1.0,
+    availability=1.0,
+    metadata={"version": "1.0"},
+    agent_owner="0x..."  # Optional: Ethereum address of the agent owner
 )
 
 # List agents
@@ -55,13 +77,12 @@ metrics = sdk.get_agent_metrics(
     start_time=datetime(2024, 1, 1),
     end_time=datetime(2024, 1, 31)
 )
-
 ```
 
 ## Key Features
 
 - Agent Management
-  - Register new agents
+  - Register new agents (with optional blockchain integration)
   - Update agent information
   - Get agent details
   - Unregister agents
@@ -69,6 +90,25 @@ metrics = sdk.get_agent_metrics(
   - List agents with category and capability filters
 - Performance Monitoring
   - Get agent metrics within specified time ranges
+- Blockchain Integration
+  - On-chain agent registration
+  - Smart contract interaction
+  - Token-based agent ownership
+
+## Blockchain Integration
+
+When initialized with a private key, the SDK will register agents both through the HTTP API and on the blockchain. The blockchain integration provides:
+
+- Decentralized agent registry
+- Token-based ownership
+- Verifiable agent status
+- Secure stake management
+
+### Configuration
+
+- `privatekey`: Ethereum private key for blockchain transactions
+- `blockchainRPC`: RPC endpoint URL (defaults to Base Sepolia)
+- `agent_owner`: Optional Ethereum address for agent ownership (defaults to transaction signer)
 
 ## Documentation
 
