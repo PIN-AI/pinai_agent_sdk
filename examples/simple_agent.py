@@ -15,9 +15,7 @@ API_KEY = os.environ.get("PINAI_API_KEY", "your-api-key-here")
 def main():
     # Initialize SDK
     client = PINAIAgentSDK(
-        api_key=API_KEY,
-        base_url="https://dev-web.pinai.tech/",
-        polling_interval=1.0  # Poll every 1 second (default)
+        api_key=API_KEY
     )
     
     try:
