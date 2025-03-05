@@ -40,8 +40,8 @@ class PINAIAgentSDK:
         self.message_callback = None
         self._agent_info = None
         self._last_poll_timestamp = None
-        self._session_id = None  # 存储当前会话ID
-        self._personas_cache = {}  # 缓存已获取的persona信息
+        self._session_id = None  
+        self._personas_cache = {}  
         
         # Check if base_url ends with a slash, add it if not
         if not self.base_url.endswith('/'):
@@ -157,8 +157,8 @@ class PINAIAgentSDK:
                 raise ValueError("No agent ID provided and no registered agent found")
             agent_id = self._agent_info["id"]
             
-        data = {"agent_id": agent_id}
-        response = self._make_request("DELETE", "api/sdk/unregister_agent", data=data)
+
+        response = self._make_request("POST", f"/sdk/delete/agent/{agent_id}")
         
         # Clear agent info if it matches
         if self._agent_info and self._agent_info.get("id") == agent_id:
@@ -199,7 +199,7 @@ class PINAIAgentSDK:
                         if message.get("created_at") and (not self._last_poll_timestamp or message["created_at"] > self._last_poll_timestamp):
                             self._last_poll_timestamp = message["created_at"]
                             
-                        # 更新会话ID
+                        # update session_id
                         if message.get("session_id"):
                             self._session_id = message.get("session_id")
                             
@@ -320,6 +320,8 @@ class PINAIAgentSDK:
             # If no session ID is available, raise error
             if not self._session_id:
                 raise ValueError("No session ID available. Either provide session_id or make sure a session is active.")
+            else:
+                session_id = self._session_id
         else:
             logger.info(f"Using provided session ID: {session_id}")
             
