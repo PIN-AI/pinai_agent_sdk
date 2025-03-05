@@ -31,17 +31,19 @@ class AdvancedAgent:
         self.base_url = base_url
         self.polling_interval = polling_interval
         self.client = None
+        self.agent_id = None
         self.agent_config = {
             "name": f"Advanced-Agent-{uuid.uuid4().hex[:8]}",
-            "category": "demo",
+            "ticker": "ADVA",
             "description": "An advanced demonstration agent with enhanced features",
+            "cover": "https://example.com/sample-cover.jpg",
             "metadata": {
                 "version": "1.0",
                 "created_at": datetime.now().isoformat(),
                 "capabilities": ["text_response", "image_response"]
             }
         }
-        self.conversation_history = []
+        self.conversation_history = {}  # Dictionary to store conversation history by session
         
     def start(self):
         """Start the agent"""
@@ -58,11 +60,13 @@ class AdvancedAgent:
             logger.info(f"Registering agent: {self.agent_config['name']}")
             response = self.client.register_agent(
                 name=self.agent_config["name"],
-                category=self.agent_config["category"],
+                ticker=self.agent_config["ticker"],
                 description=self.agent_config["description"],
+                cover=self.agent_config["cover"],
                 metadata=self.agent_config["metadata"]
             )
-            logger.info(f"Agent registered successfully: {response}")
+            self.agent_id = response.get("id")
+            logger.info(f"Agent registered successfully with ID: {self.agent_id}")
             
             # Start listening for messages
             logger.info("Starting to listen for messages...")
@@ -85,70 +89,142 @@ class AdvancedAgent:
             # Log the received message
             logger.info(f"Message received: {message}")
             
+            # Extract important information
+            content = message.get("content", "")
+            session_id = message.get("session_id", "")
+            message_id = message.get("id")
+            created_at = message.get("created_at")
+            
+            if not session_id:
+                logger.error("Message missing session_id, cannot respond")
+                return
+                
+            # Initialize conversation history for this session if not exists
+            if session_id not in self.conversation_history:
+                self.conversation_history[session_id] = []
+            
             # Add to conversation history
-            self.conversation_history.append({
+            self.conversation_history[session_id].append({
                 "role": "user",
-                "content": message.get("content", ""),
-                "timestamp": message.get("timestamp", datetime.now().timestamp() * 1000)
+                "content": content,
+                "id": message_id,
+                "timestamp": created_at
             })
             
+            # Get persona information for this session
+            try:
+                persona = self.client.get_persona(session_id)
+                logger.info(f"Persona for session {session_id}: {persona.get('name', 'Unknown')}")
+            except Exception as e:
+                logger.warning(f"Could not retrieve persona info: {e}")
+                persona = {"name": "Unknown"}
+            
             # Process the message
-            content = message.get("content", "").lower()
+            content_lower = content.lower()
             
             # Prepare response based on message content
-            if "image" in content or "picture" in content:
-                # Example: respond with an image URL if requested
+            if "image" in content_lower or "picture" in content_lower:
+                # Example: Respond with an image (using example URL)
                 response_text = "Here's an image you requested"
-                image_url = "https://example.com/sample-image.jpg"  # Replace with actual image URL
+                logger.info(f"Sending image response to {session_id}")
                 
-                logger.info(f"Sending image response: {response_text} with image: {image_url}")
+                # In a real implementation, you'd upload a real image here
+                # media_result = self.client.upload_media("/path/to/real/image.jpg", "image")
+                # image_url = media_result["media_url"]
+                
+                # Using a placeholder URL for example purposes
+                image_url = "https://example.com/sample-image.jpg"
+                
                 self.client.send_message(
                     content=response_text,
-                    image_url=image_url
+                    session_id=session_id,
+                    media_type="image",
+                    media_url=image_url
                 )
-            elif "help" in content:
+                
+                # Add response to history
+                self.conversation_history[session_id].append({
+                    "role": "assistant",
+                    "content": response_text,
+                    "media_type": "image",
+                    "media_url": image_url,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            elif "help" in content_lower:
                 # Send a help message
                 help_text = (
-                    "I am an advanced PINAI Agent example. I can:\n"
+                    f"Hello, {persona.get('name', 'User')}! I am an advanced PINAI Agent example. I can:\n"
                     "- Respond to your messages\n"
                     "- Send images (try asking for an image)\n"
                     "- Remember our conversation history\n"
-                    "Type 'history' to see our conversation summary."
+                    "Type 'history' to see a summary of our conversation."
                 )
-                logger.info(f"Sending help information")
-                self.client.send_message(content=help_text)
-            elif "history" in content:
+                logger.info(f"Sending help information to {session_id}")
+                self.client.send_message(
+                    content=help_text,
+                    session_id=session_id
+                )
+                
+                # Add response to history
+                self.conversation_history[session_id].append({
+                    "role": "assistant",
+                    "content": help_text,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            elif "history" in content_lower:
                 # Send conversation history
-                if len(self.conversation_history) <= 1:
+                history = self.conversation_history[session_id]
+                if len(history) <= 1:
                     history_text = "We don't have much conversation history yet."
                 else:
                     history_text = "Here's a summary of our conversation:\n"
-                    for i, entry in enumerate(self.conversation_history[:-1], 1):
-                        time_str = datetime.fromtimestamp(entry["timestamp"]/1000).strftime('%H:%M:%S')
-                        history_text += f"{i}. [{time_str}] You: {entry['content'][:50]}...\n"
+                    for i, entry in enumerate(history[:-1], 1):
+                        sender = "You" if entry["role"] == "user" else "Me"
+                        history_text += f"{i}. {sender}: {entry['content'][:50]}...\n"
                 
-                logger.info(f"Sending conversation history")
-                self.client.send_message(content=history_text)
+                logger.info(f"Sending conversation history to {session_id}")
+                self.client.send_message(
+                    content=history_text,
+                    session_id=session_id
+                )
+                
+                # Add response to history
+                self.conversation_history[session_id].append({
+                    "role": "assistant",
+                    "content": history_text,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
             else:
                 # Default response
-                response_text = f"You said: '{content}'. This is message #{len(self.conversation_history)} in our conversation."
-                logger.info(f"Sending regular response: {response_text}")
-                self.client.send_message(content=response_text)
-            
-            # Add response to history
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": response_text if 'response_text' in locals() else "Image response",
-                "timestamp": datetime.now().timestamp() * 1000
-            })
+                session_messages_count = len(self.conversation_history[session_id])
+                response_text = f"You said: '{content}'. This is message #{session_messages_count} in our conversation."
+                logger.info(f"Sending regular response to {session_id}")
+                self.client.send_message(
+                    content=response_text,
+                    session_id=session_id
+                )
+                
+                # Add response to history
+                self.conversation_history[session_id].append({
+                    "role": "assistant",
+                    "content": response_text,
+                    "timestamp": datetime.now().isoformat()
+                })
             
         except Exception as e:
             logger.error(f"Error handling message: {e}")
             # Try to send an error message to the user
             try:
-                self.client.send_message(content=f"Sorry, I encountered an error processing your request.")
-            except:
-                pass
+                if session_id:
+                    self.client.send_message(
+                        content="Sorry, I encountered an error while processing your request.",
+                        session_id=session_id
+                    )
+            except Exception as send_error:
+                logger.error(f"Failed to send error message: {send_error}")
     
     def cleanup(self):
         """Clean up resources and unregister agent"""
@@ -159,9 +235,10 @@ class AdvancedAgent:
                 self.client.stop()
                 
                 # Unregister the agent
-                logger.info(f"Unregistering agent: {self.agent_config['name']}")
-                self.client.unregister_agent(name=self.agent_config["name"])
-                logger.info("Agent unregistered")
+                if self.agent_id:
+                    logger.info(f"Unregistering agent ID: {self.agent_id}")
+                    self.client.unregister_agent(self.agent_id)
+                    logger.info("Agent unregistered")
             except Exception as e:
                 logger.error(f"Error during cleanup: {e}")
 

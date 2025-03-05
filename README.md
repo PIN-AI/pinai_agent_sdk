@@ -23,13 +23,16 @@ client = PINAIAgentSDK(
 )
 
 # Register a new agent
-client.register_agent(
+agent_info = client.register_agent(
     name="My Agent",
-    category="general",
+    ticker="MYAG",
     description="A general purpose agent",
-    logo="https://example.com/logo.png",  # Optional
+    cover="https://example.com/cover.png",  # Optional
     metadata={"version": "1.0"}  # Optional additional metadata
 )
+
+# Print agent ID
+print(f"Agent registered with ID: {agent_info['id']}")
 
 # Define message handler function
 def handle_message(message):
@@ -38,22 +41,30 @@ def handle_message(message):
     
     Message format:
     {
-        "sessionId": "session-id",
-        "timestamp": 12345678,  # Timestamp in milliseconds
-        "content": "message content"
+        "session_id": "session-id",
+        "id": 12345,  # Message ID
+        "content": "message content",
+        "created_at": "2025-03-05T12:30:00"  # ISO 8601 timestamp
     }
     """
     print(f"Message received: {message['content']}")
+    session_id = message["session_id"]
     
     # Reply to message
     client.send_message(
-        content="This is a reply message"
+        content="This is a reply message",
+        session_id=session_id
     )
     
     # You can also reply with an image
+    # First upload the image
+    # media_result = client.upload_media("path/to/image.jpg", "image")
+    # Then send a message with the image
     # client.send_message(
     #     content="This is a reply with an image",
-    #     image_url="https://example.com/image.jpg"
+    #     session_id=session_id,
+    #     media_type="image",
+    #     media_url=media_result["media_url"]
     # )
 
 # Start listening for new messages (non-blocking by default)
@@ -85,11 +96,14 @@ client = PINAIAgentSDK(
 ```python
 response = client.register_agent(
     name="My Agent",
-    category="general",
+    ticker="MYAG",  # Usually 4 uppercase letters
     description="Agent description",
-    logo="https://example.com/logo.png",  # Optional
+    cover="https://example.com/cover.png",  # Optional, cover image URL
     metadata={"version": "1.0", "author": "Your Name"}  # Optional
 )
+
+# Response contains the agent_id
+agent_id = response["id"]
 ```
 
 ### Listening for Messages
@@ -98,9 +112,10 @@ response = client.register_agent(
 def handle_message(message):
     # Process received message
     print(f"Message received: {message}")
+    session_id = message["session_id"]
     
     # Reply to message
-    client.send_message(content="Reply content")
+    client.send_message(content="Reply content", session_id=session_id)
 
 # Start listening for new messages in the background
 client.start(on_message_callback=handle_message)
@@ -116,13 +131,38 @@ client.run_forever()  # This method will block until KeyboardInterrupt
 
 ```python
 # Send text-only message
-client.send_message(content="This is a message")
+client.send_message(
+    content="This is a message",
+    session_id="session_12345"
+)
 
 # Send message with image
 client.send_message(
     content="This is a message with an image",
-    image_url="https://example.com/image.jpg"
+    session_id="session_12345",
+    media_type="image",
+    media_url="https://example.com/image.jpg"
 )
+```
+
+### Uploading Media
+
+```python
+# Upload an image
+media_result = client.upload_media("path/to/image.jpg", "image")
+image_url = media_result["media_url"]
+
+# Upload other types of media
+# Supported media types: "image", "video", "audio", "file"
+video_result = client.upload_media("path/to/video.mp4", "video")
+```
+
+### Getting Persona Information
+
+```python
+# Get persona information associated with a session
+persona = client.get_persona(session_id="session_12345")
+print(f"Persona name: {persona['name']}")
 ```
 
 ### Stopping the Listener
@@ -135,7 +175,11 @@ client.stop()
 ### Unregistering an Agent
 
 ```python
-client.unregister_agent(name="My Agent")
+# Using the registered agent
+client.unregister_agent()
+
+# Or specify an agent_id
+client.unregister_agent(agent_id=123)
 ```
 
 ## Exception Handling
@@ -144,7 +188,7 @@ The SDK will raise exceptions when errors occur. It's recommended to use try-exc
 
 ```python
 try:
-    client.register_agent(name="My Agent", category="general", description="Agent description")
+    client.register_agent(name="My Agent", ticker="MYAG", description="Agent description")
 except Exception as e:
     print(f"Error registering agent: {e}")
 ```
