@@ -34,23 +34,14 @@ def handle_message(message):
     """
     logger.info(f"Message received: {message}")
     
-    # Extract session_id from the message
-    session_id = message.get("session_id")
-    if not session_id:
-        logger.error("Message missing session_id, cannot respond")
-        return
-    
     # Get the message content
     content = message.get("content", "")
     
     # Simple echo response
     response = f"You said: {content}"
     
-    # Send the response
-    client.send_message(
-        content=response,
-        session_id=session_id
-    )
+    # 使用新的发送消息方法 - 不需要提供session_id
+    client.send_message(content=response)
     logger.info(f"Response sent: {response}")
 
 def main():
@@ -60,6 +51,7 @@ def main():
     parser.add_argument("--base-url", default="https://emute3dbtc.us-east-1.awsapprunner.com", help="API base URL")
     parser.add_argument("--agent-name", default="Simple-Echo-Agent", help="Name for the agent")
     parser.add_argument("--agent-ticker", default="ECHO", help="Ticker for the agent (usually 4 uppercase letters)")
+    parser.add_argument("--agent-id", default=9, type=int, help="Existing agent ID to use (if provided, will not register a new agent)")
     args = parser.parse_args()
     
     # Check if API key is provided
@@ -75,24 +67,29 @@ def main():
     )
     
     try:
-        # Register agent
-        logger.info(f"Registering agent: {args.agent_name}")
-        response = client.register_agent(
-            name=args.agent_name,
-            ticker=args.agent_ticker,
-            description="A simple echo agent that repeats user messages",
-            cover="https://example.com/cover.jpg"  # Optional
-        )
-        agent_id = response.get("id")
-        logger.info(f"Agent registered successfully with ID: {agent_id}")
+        # 如果提供了agent_id，则使用现有的agent
+        if args.agent_id:
+            logger.info(f"Using existing agent with ID: {args.agent_id}")
+            agent_id = args.agent_id
+        else:
+            logger.info(f"")
+            # 否则注册新的agent
+            # logger.info(f"Registering new agent: {args.agent_name}")
+            # response = client.register_agent(
+            #     name=args.agent_name,
+            #     ticker=args.agent_ticker,
+            #     description="A simple echo agent that repeats user messages",
+            #     cover="https://example.com/cover.jpg"  # Optional
+            # )
+            # agent_id = response.get("id")
+            # logger.info(f"Agent registered successfully with ID: {agent_id}")
         
-        # Start listening for messages
+        # 启动监听，使用agent_id参数
         logger.info("Starting to listen for messages...")
-        client.start(on_message_callback=handle_message)
+        # 使用新的组合方法，简化代码
+        client.start_and_run(on_message_callback=handle_message, agent_id=agent_id)
         
-        # Keep the application running until interrupted
-        logger.info(f"Agent {args.agent_name} is running. Press Ctrl+C to stop.")
-        client.run_forever()
+        # 注意：start_and_run会阻塞直到用户中断，所以下面的代码不会立即执行
         
     except KeyboardInterrupt:
         print("\nUser interrupt received")
@@ -105,9 +102,10 @@ def main():
         
         # Unregister agent (if we have a client)
         try:
-            logger.info("Unregistering agent...")
-            client.unregister_agent()
-            logger.info("Agent unregistered")
+            if not args.agent_id:  # 只有当我们自己注册了agent时才注销它
+                logger.info("Unregistering agent...")
+                client.unregister_agent()
+                logger.info("Agent unregistered")
         except Exception as e:
             logger.error(f"Error unregistering agent: {e}")
         

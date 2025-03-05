@@ -8,6 +8,7 @@ import logging
 import requests
 import json
 import os
+import uuid
 from typing import Dict, List, Any, Optional, Callable, Union
 from urllib.parse import urljoin
 
@@ -39,6 +40,8 @@ class PINAIAgentSDK:
         self.message_callback = None
         self._agent_info = None
         self._last_poll_timestamp = None
+        self._session_id = None  # 存储当前会话ID
+        self._personas_cache = {}  # 缓存已获取的persona信息
         
         # Check if base_url ends with a slash, add it if not
         if not self.base_url.endswith('/'):
@@ -196,6 +199,10 @@ class PINAIAgentSDK:
                         if message.get("created_at") and (not self._last_poll_timestamp or message["created_at"] > self._last_poll_timestamp):
                             self._last_poll_timestamp = message["created_at"]
                             
+                        # 更新会话ID
+                        if message.get("session_id"):
+                            self._session_id = message.get("session_id")
+                            
                         # Call message handler callback
                         self.message_callback(message)
                 
@@ -205,17 +212,28 @@ class PINAIAgentSDK:
             # Wait specified interval before polling again
             time.sleep(self.polling_interval)
     
-    def start(self, on_message_callback: Callable[[Dict], None], blocking: bool = False) -> None:
+    def start(self, on_message_callback: Callable[[Dict], None], agent_id: int = None, blocking: bool = False) -> None:
         """
         Start listening for new messages
 
         Args:
             on_message_callback (Callable[[Dict], None]): Callback function for new messages
+            agent_id (int, optional): If provided, uses this agent ID instead of registering a new one.
             blocking (bool, optional): If True, the method will block and not return until stop() is called.
                                        If False, polling runs in background thread. Defaults to False.
         """
-        if not self._agent_info or "id" not in self._agent_info:
-            raise ValueError("No registered agent found. Call register_agent() first.")
+        # 如果提供了agent_id，则直接使用而不是注册新agent
+        if agent_id is not None:
+            # 创建agent_info数据结构
+            self._agent_info = {"id": agent_id}
+            logger.info(f"Using provided agent ID: {agent_id}")
+        elif not self._agent_info or "id" not in self._agent_info:
+            raise ValueError("No agent ID provided and no registered agent found. Either call register_agent() first or provide agent_id.")
+        
+        # 生成初始会话ID
+        if not self._session_id:
+            self._session_id = f"session_{uuid.uuid4().hex}"
+            logger.info(f"Generated new session ID: {self._session_id}")
         
         # Save message callback
         self.message_callback = on_message_callback
@@ -237,6 +255,43 @@ class PINAIAgentSDK:
                 logger.info("Keyboard interrupt received, stopping...")
                 self.stop()
         
+    def start_and_run(self, on_message_callback: Callable[[Dict], None], agent_id: int = None) -> None:
+        """
+        启动消息监听并保持运行，直到用户中断。
+        这是start()和run_forever()的便捷组合方法。
+
+        Args:
+            on_message_callback (Callable[[Dict], None]): 新消息的回调函数
+            agent_id (int, optional): 如果提供，使用此代理ID而不是注册新代理
+        """
+        # 首先启动消息监听（非阻塞模式）
+        self.start(on_message_callback=on_message_callback, agent_id=agent_id, blocking=False)
+        
+        # 然后运行直到中断
+        try:
+            logger.info("运行中。按Ctrl+C停止。")
+            while not self.stop_polling and self.polling_thread.is_alive():
+                time.sleep(0.1)  # 小睡眠以防止高CPU使用率
+        except KeyboardInterrupt:
+            logger.info("收到键盘中断，正在停止...")
+            self.stop()
+        
+    def run_forever(self) -> None:
+        """
+        Convenience method to keep the application running until interrupted by user.
+        Only call this after start() has been called.
+        """
+        if not self.polling_thread or not self.polling_thread.is_alive():
+            raise RuntimeError("No active polling thread. Call start() first.")
+            
+        try:
+            logger.info("Running forever. Press Ctrl+C to stop.")
+            while not self.stop_polling and self.polling_thread.is_alive():
+                time.sleep(0.1)  # Small sleep to prevent high CPU usage
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt received, stopping...")
+            self.stop()
+        
     def stop(self) -> None:
         """
         Stop listening for new messages
@@ -248,13 +303,13 @@ class PINAIAgentSDK:
         else:
             logger.warning("No active polling thread to stop")
                 
-    def send_message(self, content: str, session_id: str, media_type: str = "none", media_url: str = None, meta_data: Dict = None) -> Dict:
+    def send_message(self, content: str, session_id: str = None, media_type: str = "none", media_url: str = None, meta_data: Dict = None) -> Dict:
         """
         Send a message in response to a user message
 
         Args:
             content (str): Message content
-            session_id (str): Session ID from the user's message
+            session_id (str, optional): Session ID. If not provided, uses the current session ID.
             media_type (str, optional): Media type, one of "none", "image", "video", "audio", "file". Defaults to "none".
             media_url (str, optional): Media URL, required if media_type is not "none". Defaults to None.
             meta_data (Dict, optional): Additional metadata. Defaults to None.
@@ -264,9 +319,28 @@ class PINAIAgentSDK:
         """
         if not self._agent_info or "id" not in self._agent_info:
             raise ValueError("No registered agent found. Call register_agent() first.")
+        
+        # 使用提供的会话ID或当前会话ID
+        if session_id is None:
+            # 如果没有会话ID，则生成新的
+            if not self._session_id:
+                self._session_id = f"session_{uuid.uuid4().hex}"
+                logger.info(f"Generated new session ID: {self._session_id}")
+            session_id = self._session_id
+        else:
+            logger.info(f"Using provided session ID: {session_id}")
             
-        # Get persona ID from session
-        persona_info = self.get_persona(session_id)
+        # 获取persona信息，如果已缓存则使用缓存
+        if session_id in self._personas_cache:
+            persona_info = self._personas_cache[session_id]
+        else:
+            try:
+                persona_info = self.get_persona(session_id)
+                self._personas_cache[session_id] = persona_info
+            except Exception as e:
+                logger.error(f"Error getting persona info: {e}")
+                raise ValueError(f"Could not get persona info for session {session_id}")
+        
         persona_id = persona_info.get("id")
         
         if not persona_id:
@@ -286,18 +360,32 @@ class PINAIAgentSDK:
         logger.info(f"Message sent: {content[:50]}...")
         return response
     
-    def get_persona(self, session_id: str) -> Dict:
+    def get_persona(self, session_id: str = None) -> Dict:
         """
         Get persona information by session ID
 
         Args:
-            session_id (str): Session ID from the user's message
+            session_id (str, optional): Session ID. If not provided, uses the current session ID.
 
         Returns:
             Dict: Persona information
         """
+        # 使用提供的会话ID或当前会话ID
+        if session_id is None:
+            if not self._session_id:
+                raise ValueError("No session ID available. Either provide session_id or make sure a session is active.")
+            session_id = self._session_id
+            
+        # 如果已缓存，则使用缓存
+        if session_id in self._personas_cache:
+            return self._personas_cache[session_id]
+            
         response = self._make_request("GET", f"api/sdk/get_persona_by_session?session_id={session_id}")
         logger.info(f"Retrieved persona for session {session_id}")
+        
+        # 缓存结果
+        self._personas_cache[session_id] = response
+        
         return response
     
     def upload_media(self, file_path: str, media_type: str) -> Dict:
@@ -328,22 +416,6 @@ class PINAIAgentSDK:
         logger.info(f"Media uploaded: {os.path.basename(file_path)} as {media_type}")
         return response
     
-    def run_forever(self) -> None:
-        """
-        Convenience method to keep the application running until interrupted by user.
-        Only call this after start() has been called.
-        """
-        if not self.polling_thread or not self.polling_thread.is_alive():
-            raise RuntimeError("No active polling thread. Call start() first.")
-            
-        try:
-            logger.info("Running forever. Press Ctrl+C to stop.")
-            while not self.stop_polling and self.polling_thread.is_alive():
-                time.sleep(0.1)  # Small sleep to prevent high CPU usage
-        except KeyboardInterrupt:
-            logger.info("Keyboard interrupt received, stopping...")
-            self.stop()
-        
     def __del__(self):
         """
         Destructor to ensure polling is stopped when object is destroyed

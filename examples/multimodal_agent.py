@@ -1,14 +1,18 @@
 """
-Multimodal PINAI Agent Example
-Demonstrates how to create an agent that can process and send images
+Multimodal Agent Example
+Demonstrates how to create an agent that can handle and send images
 """
 
 import os
 import logging
 import argparse
 import sys
-import tempfile
+import re
+import base64
 import requests
+import uuid
+from io import BytesIO
+from PIL import Image
 from datetime import datetime
 from pinai_agent_sdk import PINAIAgentSDK
 
@@ -21,41 +25,42 @@ logging.basicConfig(
         logging.FileHandler('multimodal_agent.log')
     ]
 )
-logger = logging.getLogger("MultimodalAgent")
+logger = logging.getLogger("MultiModalAgent")
 
-class MultimodalAgent:
-    """A PINAI Agent implementation with multimodal capabilities"""
+class MultiModalAgent:
+    """
+    A multimodal agent that can handle images in conversations
+    """
     
-    def __init__(self, api_key, base_url="https://dev-web.pinai.tech/", polling_interval=1.0):
+    def __init__(self, api_key, agent_id=None, base_url="https://emute3dbtc.us-east-1.awsapprunner.com", polling_interval=1.0):
         """Initialize the multimodal agent"""
         self.api_key = api_key
         self.base_url = base_url
         self.polling_interval = polling_interval
         self.client = None
-        self.agent_id = None
+        self.agent_id = agent_id
+        self.temp_dir = "temp_images"
+        self.ensure_temp_dir()
         
-        # Define agent configuration
+        # Agent configuration
         self.agent_config = {
-            "name": f"Multimodal Assistant",
-            "ticker": "MULT",
-            "description": "An agent that can process and send images",
-            "cover": "https://images.unsplash.com/photo-1579547945413-497e1b99dac0",
+            "name": f"MultiModal-Agent-{uuid.uuid4().hex[:8]}",
+            "ticker": "MIMG",
+            "description": "A multimodal agent that can process and send images",
+            "cover": "https://example.com/multimodal-cover.jpg",
             "metadata": {
                 "version": "1.0",
-                "capabilities": ["text", "image"]
+                "created_at": datetime.now().isoformat(),
+                "capabilities": ["text_response", "image_processing", "image_generation"]
             }
         }
-        
-        # Predefined image URLs (in a real application, you might use a more sophisticated image generation or retrieval system)
-        self.image_collection = {
-            "cat": "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba",
-            "dog": "https://images.unsplash.com/photo-1543466835-00a7907e9de1",
-            "flower": "https://images.unsplash.com/photo-1490750967868-88aa4486c946",
-            "mountain": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b",
-            "beach": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-            "city": "https://images.unsplash.com/photo-1519501025264-65ba15a82390"
-        }
-        
+    
+    def ensure_temp_dir(self):
+        """Ensure temp directory exists"""
+        if not os.path.exists(self.temp_dir):
+            os.makedirs(self.temp_dir)
+            logger.info(f"Created temp directory at {self.temp_dir}")
+    
     def start(self):
         """Start the agent"""
         try:
@@ -67,25 +72,28 @@ class MultimodalAgent:
                 polling_interval=self.polling_interval
             )
             
-            # Register agent
-            logger.info(f"Registering agent: {self.agent_config['name']}")
-            response = self.client.register_agent(
-                name=self.agent_config["name"],
-                ticker=self.agent_config["ticker"],
-                description=self.agent_config["description"],
-                cover=self.agent_config["cover"],
-                metadata=self.agent_config["metadata"]
-            )
-            self.agent_id = response.get("id")
-            logger.info(f"Agent registered successfully with ID: {self.agent_id}")
+            # 如果没有提供agent_id，则注册新的agent
+            if self.agent_id is None:
+                # Register agent
+                logger.info(f"Registering agent: {self.agent_config['name']}")
+                response = self.client.register_agent(
+                    name=self.agent_config["name"],
+                    ticker=self.agent_config["ticker"],
+                    description=self.agent_config["description"],
+                    cover=self.agent_config["cover"],
+                    metadata=self.agent_config["metadata"]
+                )
+                self.agent_id = response.get("id")
+                logger.info(f"Agent registered with ID: {self.agent_id}")
+            else:
+                logger.info(f"Using existing agent with ID: {self.agent_id}")
             
             # Start listening for messages
             logger.info("Starting to listen for messages...")
-            self.client.start(on_message_callback=self.handle_message)
+            # 使用新的组合方法，简化代码
+            self.client.start_and_run(on_message_callback=self.handle_message, agent_id=self.agent_id)
             
-            # Run the agent until interrupted
-            logger.info(f"Agent {self.agent_config['name']} is running. Press Ctrl+C to stop.")
-            self.client.run_forever()
+            # 注意：start_and_run会阻塞直到用户中断，所以下面的代码不会立即执行
             
         except Exception as e:
             logger.error(f"Error starting agent: {e}")
@@ -100,171 +108,162 @@ class MultimodalAgent:
             # Log the received message
             logger.info(f"Message received: {message}")
             
-            # Extract important information
+            # Extract message data
             content = message.get("content", "")
-            session_id = message.get("session_id", "")
-            user_id = message.get("user_id", "")
+            media_type = message.get("media_type", "none")
+            media_url = message.get("media_url")
             
-            if not session_id:
-                logger.error("Message missing session_id, cannot respond")
-                return
-                
-            # Get persona information for this session
-            try:
-                persona = self.client.get_persona(session_id)
-                logger.info(f"Persona for session {session_id}: {persona.get('name', 'Unknown')}")
-                user_name = persona.get('name', 'User')
-            except Exception as e:
-                logger.warning(f"Could not retrieve persona info: {e}")
-                user_name = "User"
-            
-            # Process the message content
-            content_lower = content.lower()
-            
-            # Check if we need to send an image
-            for keyword, image_url in self.image_collection.items():
-                if keyword in content_lower:
-                    # User requested an image matching the keyword
-                    response_text = f"Here's a {keyword} image for you, {user_name}"
-                    
-                    # In a real application, you might need to download and upload the image to PINAI
-                    # For demonstration, we'll use the predefined URL
-                    self._send_image_response(session_id, response_text, image_url)
-                    return
-            
-            # Check if the message contains an image URL
-            if "http" in content_lower and any(ext in content_lower for ext in [".jpg", ".jpeg", ".png", ".gif"]):
-                # Try to extract URLs from the message
-                urls = self._extract_urls(content)
-                if urls:
-                    # Try to download and process the first URL
-                    image_url = urls[0]
-                    try:
-                        self._process_user_image(session_id, image_url)
-                        return
-                    except Exception as e:
-                        logger.error(f"Error processing user image: {e}")
-                        # Continue to default reply
-            
-            # Default replies
-            if "help" in content_lower:
-                help_text = (
-                    f"Hello, {user_name}! I'm a multimodal agent that can process and send images.\n\n"
-                    "You can try the following:\n"
-                    "1. Ask for a specific image, e.g., 'Send me a cat image'. Currently supported keywords: " + 
-                    ", ".join(self.image_collection.keys()) + "\n"
-                    "2. Send me an image URL and I'll try to analyze it\n"
-                    "3. Type 'help' anytime to see this message"
-                )
-                self.client.send_message(
-                    content=help_text,
-                    session_id=session_id
-                )
+            # Handle different types of messages
+            if media_type == "image" and media_url:
+                # Handle image message
+                self.process_image_message(content, media_url)
             else:
-                # Generic reply
-                response_text = (
-                    f"Thanks for your message, {user_name}! If you'd like to see an image, try saying 'send me a cat image'.\n"
-                    f"Or type 'help' to see what I can do."
-                )
-                self.client.send_message(
-                    content=response_text,
-                    session_id=session_id
-                )
-            
+                # Handle text message
+                self.process_text_message(content)
+                
         except Exception as e:
             logger.error(f"Error handling message: {e}")
-            # Try to send an error message to the user
-            try:
-                if session_id:
-                    self.client.send_message(
-                        content="Sorry, I encountered an error while processing your request.",
-                        session_id=session_id
-                    )
-            except Exception as send_error:
-                logger.error(f"Failed to send error message: {send_error}")
+            self.client.send_message(
+                content="Sorry, I encountered an error while processing your message."
+            )
     
-    def _extract_urls(self, text):
-        """Extract URLs from text"""
-        import re
-        url_pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-        return url_pattern.findall(text)
-    
-    def _process_user_image(self, session_id, image_url):
-        """Process an image URL sent by the user"""
+    def process_image_message(self, content, image_url):
+        """Process a message containing an image"""
         try:
             # Download the image
-            logger.info(f"Attempting to download user image: {image_url}")
-            response = requests.get(image_url, stream=True, timeout=10)
-            response.raise_for_status()
+            logger.info(f"Downloading image from: {image_url}")
+            image_data = self.download_image(image_url)
             
-            # Create a temporary file to save the image
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-                temp_path = temp_file.name
-                for chunk in response.iter_content(chunk_size=8192):
-                    temp_file.write(chunk)
+            if not image_data:
+                self.client.send_message(
+                    content="I couldn't download the image you sent."
+                )
+                return
+                
+            # Generate a filename and save the image
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{self.temp_dir}/user_image_{timestamp}.jpg"
             
-            # Upload the image to PINAI
-            logger.info("Uploading image to PINAI")
-            media_result = self.client.upload_media(temp_path, "image")
-            media_url = media_result.get("media_url")
+            with open(image_filename, "wb") as f:
+                f.write(image_data)
             
-            # Send analysis result and image
-            response_text = "I received your image and here it is after processing."
-            self.client.send_message(
-                content=response_text,
-                session_id=session_id,
-                media_type="image",
-                media_url=media_url
+            logger.info(f"Saved image to: {image_filename}")
+            
+            # Get basic image info
+            try:
+                with Image.open(BytesIO(image_data)) as img:
+                    width, height = img.size
+                    format_name = img.format
+                    mode = img.mode
+            except Exception as e:
+                logger.error(f"Error analyzing image: {e}")
+                width, height, format_name, mode = "unknown", "unknown", "unknown", "unknown"
+            
+            # Prepare response
+            response_text = (
+                f"I received your image! Here's what I know about it:\n"
+                f"- Dimensions: {width}x{height} pixels\n"
+                f"- Format: {format_name}\n"
+                f"- Color mode: {mode}\n\n"
+                f"What would you like me to do with this image?"
             )
             
-            # Clean up temporary file
-            os.remove(temp_path)
-            logger.info("Image processing complete")
+            # In a real implementation, you might perform image analysis, 
+            # object detection, or other computer vision tasks here
             
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error downloading image: {e}")
-            self.client.send_message(
-                content="Sorry, I couldn't download the image you provided. Please ensure the URL is valid and publicly accessible.",
-                session_id=session_id
-            )
+            # Send response
+            self.client.send_message(content=response_text)
+            
         except Exception as e:
             logger.error(f"Error processing image: {e}")
             self.client.send_message(
-                content="Sorry, I encountered an issue while processing your image.",
-                session_id=session_id
+                content="I had trouble processing the image. Could you try sending it again?"
             )
     
-    def _send_image_response(self, session_id, text, image_url):
-        """Send a response with an image"""
-        try:
-            logger.info(f"Sending image response, URL: {image_url}")
-            self.client.send_message(
-                content=text,
-                session_id=session_id,
-                media_type="image",
-                media_url=image_url
-            )
-        except Exception as e:
-            logger.error(f"Error sending image response: {e}")
-            # Try to send a text-only reply
-            try:
+    def process_text_message(self, content):
+        """Process a text message"""
+        content_lower = content.lower()
+        
+        # Check if user is asking for an image generation
+        if "generate" in content_lower and ("image" in content_lower or "picture" in content_lower):
+            # Extract what to generate using regex
+            match = re.search(r"generate\s+(?:an?|a)\s+(?:image|picture)\s+of\s+(.+)", content_lower)
+            if match:
+                subject = match.group(1).strip()
+                self.generate_image(subject)
+            else:
                 self.client.send_message(
-                    content=f"{text} (Sorry, I couldn't send the image)",
-                    session_id=session_id
+                    content="I'm not sure what kind of image you want me to generate. Could you be more specific? For example, 'Generate an image of a sunset'"
                 )
-            except Exception:
-                pass
+        
+        # Check if user wants help
+        elif "help" in content_lower:
+            help_text = (
+                "I'm a multimodal agent that can handle images! Here's what I can do:\n\n"
+                "1. Analyze images you send me\n"
+                "2. Generate simple images based on your description (try 'Generate an image of [subject]')\n\n"
+                "Just send me an image or ask me to generate one!"
+            )
+            self.client.send_message(content=help_text)
+            
+        # Default response
+        else:
+            response = (
+                f"You said: {content}\n\n"
+                f"If you'd like to interact with images, you can:\n"
+                f"- Send me an image to analyze\n"
+                f"- Ask me to 'generate an image of [subject]'"
+            )
+            self.client.send_message(content=response)
+    
+    def generate_image(self, subject):
+        """Generate an image based on subject (placeholder implementation)"""
+        logger.info(f"Generating image of: {subject}")
+        
+        # In a real implementation, you would call an image generation API
+        # For this example, we'll just use a placeholder image
+        
+        # Notify user
+        self.client.send_message(
+            content=f"I'm generating an image of {subject} for you..."
+        )
+        
+        # For demo purposes, we're using placeholder images
+        placeholder_url = "https://example.com/generated-image.jpg"
+        
+        # In a real implementation, you would:
+        # 1. Generate an image using an API or local model
+        # 2. Save the image locally
+        # 3. Upload the image using client.upload_media()
+        # 4. Send the message with the uploaded image URL
+        
+        # Send the placeholder response
+        self.client.send_message(
+            content=f"Here's the image of {subject} I generated for you!",
+            media_type="image",
+            media_url=placeholder_url
+        )
+    
+    def download_image(self, url):
+        """Download an image from URL"""
+        try:
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            logger.error(f"Error downloading image: {e}")
+            return None
     
     def cleanup(self):
-        """Clean up resources and unregister agent"""
+        """Clean up resources"""
         if self.client:
             try:
                 # Stop the client
                 logger.info("Stopping client...")
                 self.client.stop()
                 
-                # Unregister the agent
-                if self.agent_id:
+                # Unregister the agent only if we created it
+                if self.agent_id and not getattr(self, 'use_existing_agent', False):
                     logger.info(f"Unregistering agent ID: {self.agent_id}")
                     self.client.unregister_agent(self.agent_id)
                     logger.info("Agent unregistered")
@@ -276,8 +275,9 @@ def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Run a multimodal PINAI Agent")
     parser.add_argument("--api-key", default=os.environ.get("PINAI_API_KEY"), help="PINAI API Key (or set PINAI_API_KEY environment variable)")
-    parser.add_argument("--base-url", default="https://dev-web.pinai.tech/", help="API base URL")
+    parser.add_argument("--base-url", default="https://emute3dbtc.us-east-1.awsapprunner.com", help="API base URL")
     parser.add_argument("--polling-interval", type=float, default=1.0, help="Polling interval in seconds")
+    parser.add_argument("--agent-id", type=int, help="Existing agent ID to use instead of creating a new one")
     args = parser.parse_args()
     
     # Check if API key is provided
@@ -286,11 +286,16 @@ def main():
         sys.exit(1)
     
     # Create and start agent
-    agent = MultimodalAgent(
+    agent = MultiModalAgent(
         api_key=args.api_key,
+        agent_id=args.agent_id,
         base_url=args.base_url,
         polling_interval=args.polling_interval
     )
+    
+    # 如果使用现有agent，设置一个标志来防止卸载
+    if args.agent_id:
+        agent.use_existing_agent = True
     
     try:
         agent.start()

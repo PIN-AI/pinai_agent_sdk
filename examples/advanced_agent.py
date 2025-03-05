@@ -25,13 +25,13 @@ logger = logging.getLogger("AdvancedAgent")
 class AdvancedAgent:
     """An advanced agent implementation using the PINAI Agent SDK"""
     
-    def __init__(self, api_key, base_url="https://dev-web.pinai.tech/", polling_interval=1.0):
+    def __init__(self, api_key, agent_id=None, base_url="https://emute3dbtc.us-east-1.awsapprunner.com", polling_interval=1.0):
         """Initialize the advanced agent"""
         self.api_key = api_key
         self.base_url = base_url
         self.polling_interval = polling_interval
         self.client = None
-        self.agent_id = None
+        self.agent_id = agent_id
         self.agent_config = {
             "name": f"Advanced-Agent-{uuid.uuid4().hex[:8]}",
             "ticker": "ADVA",
@@ -56,25 +56,28 @@ class AdvancedAgent:
                 polling_interval=self.polling_interval
             )
             
-            # Register agent
-            logger.info(f"Registering agent: {self.agent_config['name']}")
-            response = self.client.register_agent(
-                name=self.agent_config["name"],
-                ticker=self.agent_config["ticker"],
-                description=self.agent_config["description"],
-                cover=self.agent_config["cover"],
-                metadata=self.agent_config["metadata"]
-            )
-            self.agent_id = response.get("id")
-            logger.info(f"Agent registered successfully with ID: {self.agent_id}")
+            # 如果没有提供agent_id，则注册新的agent
+            if self.agent_id is None:
+                # Register agent
+                logger.info(f"Registering agent: {self.agent_config['name']}")
+                response = self.client.register_agent(
+                    name=self.agent_config["name"],
+                    ticker=self.agent_config["ticker"],
+                    description=self.agent_config["description"],
+                    cover=self.agent_config["cover"],
+                    metadata=self.agent_config["metadata"]
+                )
+                self.agent_id = response.get("id")
+                logger.info(f"Agent registered successfully with ID: {self.agent_id}")
+            else:
+                logger.info(f"Using existing agent with ID: {self.agent_id}")
             
             # Start listening for messages
             logger.info("Starting to listen for messages...")
-            self.client.start(on_message_callback=self.handle_message)
+            # 使用新的组合方法，简化代码
+            self.client.start_and_run(on_message_callback=self.handle_message, agent_id=self.agent_id)
             
-            # Run the agent until interrupted
-            logger.info(f"Agent {self.agent_config['name']} is running. Press Ctrl+C to stop.")
-            self.client.run_forever()
+            # 注意：start_and_run会阻塞直到用户中断，所以下面的代码不会立即执行
             
         except Exception as e:
             logger.error(f"Error starting agent: {e}")
@@ -135,9 +138,9 @@ class AdvancedAgent:
                 # Using a placeholder URL for example purposes
                 image_url = "https://example.com/sample-image.jpg"
                 
+                # SDK自动使用当前的session_id
                 self.client.send_message(
                     content=response_text,
-                    session_id=session_id,
                     media_type="image",
                     media_url=image_url
                 )
@@ -162,8 +165,7 @@ class AdvancedAgent:
                 )
                 logger.info(f"Sending help information to {session_id}")
                 self.client.send_message(
-                    content=help_text,
-                    session_id=session_id
+                    content=help_text
                 )
                 
                 # Add response to history
@@ -186,8 +188,7 @@ class AdvancedAgent:
                 
                 logger.info(f"Sending conversation history to {session_id}")
                 self.client.send_message(
-                    content=history_text,
-                    session_id=session_id
+                    content=history_text
                 )
                 
                 # Add response to history
@@ -203,8 +204,7 @@ class AdvancedAgent:
                 response_text = f"You said: '{content}'. This is message #{session_messages_count} in our conversation."
                 logger.info(f"Sending regular response to {session_id}")
                 self.client.send_message(
-                    content=response_text,
-                    session_id=session_id
+                    content=response_text
                 )
                 
                 # Add response to history
@@ -218,11 +218,9 @@ class AdvancedAgent:
             logger.error(f"Error handling message: {e}")
             # Try to send an error message to the user
             try:
-                if session_id:
-                    self.client.send_message(
-                        content="Sorry, I encountered an error while processing your request.",
-                        session_id=session_id
-                    )
+                self.client.send_message(
+                    content="Sorry, I encountered an error while processing your request."
+                )
             except Exception as send_error:
                 logger.error(f"Failed to send error message: {send_error}")
     
@@ -235,7 +233,7 @@ class AdvancedAgent:
                 self.client.stop()
                 
                 # Unregister the agent
-                if self.agent_id:
+                if self.agent_id and not getattr(self, 'use_existing_agent', False):
                     logger.info(f"Unregistering agent ID: {self.agent_id}")
                     self.client.unregister_agent(self.agent_id)
                     logger.info("Agent unregistered")
@@ -247,8 +245,9 @@ def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Run an advanced PINAI Agent")
     parser.add_argument("--api-key", default=os.environ.get("PINAI_API_KEY"), help="PINAI API Key (or set PINAI_API_KEY environment variable)")
-    parser.add_argument("--base-url", default="https://dev-web.pinai.tech/", help="API base URL")
+    parser.add_argument("--base-url", default="https://emute3dbtc.us-east-1.awsapprunner.com", help="API base URL")
     parser.add_argument("--polling-interval", type=float, default=1.0, help="Polling interval in seconds")
+    parser.add_argument("--agent-id", type=int, help="Existing agent ID to use instead of creating a new one")
     args = parser.parse_args()
     
     # Check if API key is provided
@@ -259,9 +258,14 @@ def main():
     # Create and start agent
     agent = AdvancedAgent(
         api_key=args.api_key,
+        agent_id=args.agent_id,
         base_url=args.base_url,
         polling_interval=args.polling_interval
     )
+    
+    # 如果使用现有agent，设置一个标志来防止卸载
+    if args.agent_id:
+        agent.use_existing_agent = True
     
     try:
         agent.start()
