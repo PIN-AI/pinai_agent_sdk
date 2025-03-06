@@ -7,7 +7,7 @@ import os
 from pinai_agent_sdk import PINAIAgentSDK, AGENT_CATEGORY_SOCIAL
 
 # Your API key - get it from PINAI platform
-API_KEY = os.environ.get("PINAI_API_KEY", "pin_MTI0MDAwMTM6NTI5Mzg_Toouz5tmIo2WzCp8")
+API_KEY = os.environ.get("PINAI_API_KEY", "")
 
 # Initialize the SDK client
 client = PINAIAgentSDK(api_key=API_KEY)

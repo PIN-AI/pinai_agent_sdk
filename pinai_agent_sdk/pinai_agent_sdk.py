@@ -365,7 +365,8 @@ class PINAIAgentSDK:
                 # Prepare poll request data
                 data = {
                     "agent_id": agent_id,
-                    "since_timestamp": self._last_poll_timestamp
+                    "since_timestamp": self._last_poll_timestamp,
+                    "sender": "user"
                 }
                 
                 # Get new messages
