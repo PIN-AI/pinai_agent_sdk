@@ -20,6 +20,10 @@ from pinai_agent_sdk import PINAIAgentSDK, AGENT_CATEGORY_SOCIAL
 
 # Initialize the SDK client
 API_KEY = os.environ.get("PINAI_API_KEY", "your_api_key_here")
+# For blockchain integration (optional)
+PRIVATE_KEY = os.environ.get("ETHEREUM_PRIVATE_KEY")
+RPC_URL = os.environ.get("BLOCKCHAIN_RPC_URL", "https://sepolia.base.org")
+
 client = PINAIAgentSDK(api_key=API_KEY)
 
 # Define message handling function
@@ -113,7 +117,9 @@ client = PINAIAgentSDK(
     api_key="your_api_key",  # Required: PINAI API key
     base_url="https://api.example.com",  # Optional: API base URL
     timeout=30,  # Optional: Request timeout in seconds
-    polling_interval=1.0  # Optional: Message polling interval in seconds
+    polling_interval=1.0,  # Optional: Message polling interval in seconds
+    privatekey="your_private_key",  # Optional: Ethereum private key for blockchain interactions
+    blockchainRPC="https://sepolia.base.org"  # Optional: Blockchain RPC URL for on-chain agent registration
 )
 ```
 
@@ -126,7 +132,8 @@ agent_info = client.register_agent(
     category=AGENT_CATEGORY_SOCIAL,  # Required: Agent category
     wallet="your_wallet_address",  # Optional: Wallet address
     cover="cover_image_url",  # Optional: Cover image URL
-    metadata={"key": "value"}  # Optional: Additional metadata
+    metadata={"key": "value"},  # Optional: Additional metadata
+    agent_owner="0x123..."  # Optional: Ethereum address of the agent owner (for blockchain registration)
 )
 ```
 
@@ -201,6 +208,7 @@ The SDK provides various exception types to help handle different error scenario
 - `ValidationError`: Request validation failure (400 errors)
 - `ServerError`: Server returns 5xx errors
 - `NetworkError`: Network connection issues
+- `Web3Error`: Blockchain interaction failures
 
 Example:
 
