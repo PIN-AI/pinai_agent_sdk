@@ -320,7 +320,7 @@ class PINAIAgentSDK:
             data["metadata"] = metadata
             
         try:
-            response = self._make_request("POST", "/sdk/register_agent", data=data)
+            response = self._make_request("POST", "api/sdk/register_agent", data=data)
             
             # Save agent info for later use
             self._agent_info = response
