@@ -108,21 +108,17 @@ class PINAIAgentSDK:
             
         logger.info(f"PINAIAgentSDK initialized with base URL: {base_url}")
         
-        # 初始化区块链组件
         self.web3 = None
         self.contract = None
         self.account = None
         
         if privatekey:
             try:
-                # 初始化 Web3
                 rpc_url = blockchainRPC or DEFAULT_RPC
                 self.web3 = Web3(Web3.HTTPProvider(rpc_url))
                 
-                # 初始化账户
                 self.account = Account.from_key(privatekey)
                 
-                # 加载合约 ABI 并创建合约实例
                 abi_path = os.path.join(os.path.dirname(__file__), 'AgentManage.abi.json')
                 with open(abi_path) as f:
                     contract_abi = json.load(f)['abi']
