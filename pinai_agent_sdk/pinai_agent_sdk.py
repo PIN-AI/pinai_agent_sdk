@@ -541,7 +541,7 @@ class PINAIAgentSDK:
         
         # Make API request to unregister agent
         try:
-            response = self._make_request("POST", f"api/sdk/delete/agent/{agent_id}")
+            response = self._make_request("POST", f"/sdk/delete/agent/{agent_id}")
             
             # Clear agent info if it matches
             if self._agent_info and self._agent_info.get("id") == agent_id:
