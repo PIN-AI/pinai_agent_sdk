@@ -1,4 +1,8 @@
 .memo.txt
+info.txt
+*.ipynb
+sdk_integration_guide.md
+upload_pypi.sh
 
 # Python
 __pycache__/
