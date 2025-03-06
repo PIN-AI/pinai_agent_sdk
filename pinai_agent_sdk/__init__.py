@@ -25,7 +25,7 @@ from .constants import (
     AGENT_CATEGORY_OTHER
 )
 
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 __all__ = [
     "PINAIAgentSDK",
     "PINAIAgentSDKError",
