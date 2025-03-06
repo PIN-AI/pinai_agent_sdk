@@ -1,6 +1,10 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from pinai_agent_sdk.pinai_agent_sdk import PINAIAgentSDK
+from pinai_agent_sdk.pinai_agent_sdk import (
+    PINAIAgentSDK,
+    AGENT_CATEGORY_SOCIAL,
+    AGENT_CATEGORY_AI_CHAT
+)
 from eth_account import Account
 
 # Test private keys (these are test accounts, DO NOT use in production)
@@ -56,7 +60,7 @@ def test_register_agent_with_blockchain():
     
     # Mock transaction sending and receipt
     sdk.web3.eth.send_raw_transaction.return_value = b'0x456'
-    sdk.web3.eth.wait_for_transaction_receipt.return_value = {'status': 1}
+    sdk.web3.eth.wait_for_transaction_receipt.return_value = {'status': 1, 'blockNumber': 12345}
     
     # Mock HTTP API call
     with patch.object(sdk, '_make_request') as mock_request:
@@ -65,8 +69,9 @@ def test_register_agent_with_blockchain():
         # Register agent with specific owner
         result = sdk.register_agent(
             name="Test Agent",
-            ticker="TEST",
             description="Test agent for blockchain interaction",
+            category=AGENT_CATEGORY_SOCIAL,
+            wallet="0x1234567890123456789012345678901234567890",
             agent_owner=test_owner.address
         )
         
@@ -128,7 +133,7 @@ def test_register_agent_without_owner():
     
     # Mock transaction sending and receipt
     sdk.web3.eth.send_raw_transaction.return_value = b'0x456'
-    sdk.web3.eth.wait_for_transaction_receipt.return_value = {'status': 1}
+    sdk.web3.eth.wait_for_transaction_receipt.return_value = {'status': 1, 'blockNumber': 12345}
     
     # Mock HTTP API call
     with patch.object(sdk, '_make_request') as mock_request:
@@ -137,8 +142,8 @@ def test_register_agent_without_owner():
         # Register agent without specifying owner
         result = sdk.register_agent(
             name="Test Agent",
-            ticker="TEST",
-            description="Test agent for blockchain interaction"
+            description="Test agent for blockchain interaction",
+            category=AGENT_CATEGORY_AI_CHAT
         )
         
         # Verify HTTP API was called
@@ -199,7 +204,7 @@ def test_unregister_agent():
     
     # Mock transaction sending and receipt
     sdk.web3.eth.send_raw_transaction.return_value = b'0x456'
-    sdk.web3.eth.wait_for_transaction_receipt.return_value = {'status': 1}
+    sdk.web3.eth.wait_for_transaction_receipt.return_value = {'status': 1, 'blockNumber': 12345}
     
     # Mock HTTP API call
     with patch.object(sdk, '_make_request') as mock_request:

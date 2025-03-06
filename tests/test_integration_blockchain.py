@@ -5,7 +5,12 @@ import logging
 import uuid
 import traceback
 from unittest.mock import patch, MagicMock
-from pinai_agent_sdk.pinai_agent_sdk import PINAIAgentSDK
+from pinai_agent_sdk.pinai_agent_sdk import (
+    PINAIAgentSDK,
+    AGENT_CATEGORY_SOCIAL,
+    AGENT_CATEGORY_AI_CHAT,
+    AGENT_CATEGORY_OTHER
+)
 from eth_account import Account
 from web3 import Web3
 from web3.exceptions import Web3RPCError
@@ -160,12 +165,11 @@ def test_register_agent_with_blockchain():
     test_owner = Account.from_key(TEST_OWNER_PRIVATE_KEY)
     logger.info(f"Test owner account address: {test_owner.address}")
     
-    # Generate unique agent name and ticker
+    # Generate unique agent name and agent ID
     timestamp = int(time.time())
     agent_name = f"Test Agent {timestamp}"
-    agent_ticker = f"T{timestamp % 1000}"
     agent_id = int(uuid.uuid4().int % (2**64))
-    logger.info(f"Generated agent info - Name: {agent_name}, Ticker: {agent_ticker}, ID: {agent_id}")
+    logger.info(f"Generated agent info - Name: {agent_name}, ID: {agent_id}")
     
     # Mock HTTP API call since we're only testing blockchain interaction
     with patch.object(sdk, '_make_request') as mock_request:
@@ -184,8 +188,9 @@ def test_register_agent_with_blockchain():
             logger.info(f"Starting agent registration, owner: {test_owner.address}")
             result = sdk.register_agent(
                 name=agent_name,
-                ticker=agent_ticker,
                 description="Test agent for blockchain interaction",
+                category=AGENT_CATEGORY_SOCIAL,
+                wallet=test_owner.address,
                 agent_owner=test_owner.address
             )
             
@@ -256,12 +261,11 @@ def test_register_agent_without_owner():
         blockchainRPC=RPC_URL
     )
     
-    # Generate unique agent name and ticker
+    # Generate unique agent name and agent ID
     timestamp = int(time.time())
     agent_name = f"Test Agent {timestamp}"
-    agent_ticker = f"T{timestamp % 1000}"
     agent_id = int(uuid.uuid4().int % (2**64))
-    logger.info(f"Generated agent info - Name: {agent_name}, Ticker: {agent_ticker}, ID: {agent_id}")
+    logger.info(f"Generated agent info - Name: {agent_name}, ID: {agent_id}")
     
     # Mock HTTP API call since we're only testing blockchain interaction
     with patch.object(sdk, '_make_request') as mock_request:
@@ -280,8 +284,8 @@ def test_register_agent_without_owner():
             logger.info(f"Starting agent registration without owner (defaults to sender: {sdk.account.address})")
             result = sdk.register_agent(
                 name=agent_name,
-                ticker=agent_ticker,
-                description="Test agent for blockchain interaction without owner"
+                description="Test agent for blockchain interaction without owner",
+                category=AGENT_CATEGORY_AI_CHAT
             )
             
             # Verify HTTP API was called
@@ -445,24 +449,23 @@ def test_full_agent_lifecycle():
         blockchainRPC=RPC_URL
     )
     
-    # Generate unique agent name and ticker
+    # Generate unique agent name and agent ID
     timestamp = int(time.time())
     agent_name = f"Lifecycle Test Agent {timestamp}"
-    agent_ticker = f"L{timestamp % 1000}"
     agent_id = int(uuid.uuid4().int % (2**64))
-    logger.info(f"Generated agent info - Name: {agent_name}, Ticker: {agent_ticker}, ID: {agent_id}")
+    logger.info(f"Generated agent info - Name: {agent_name}, ID: {agent_id}")
     
     try:
         # Step 1: Register agent
         with patch.object(sdk, '_make_request') as mock_request:
             mock_request.return_value = {"status": "success", "id": agent_id}
             
-            logger.info(f"Step 1: Register agent {agent_name} ({agent_ticker})")
+            logger.info(f"Step 1: Register agent {agent_name}")
             try:
                 result = sdk.register_agent(
                     name=agent_name,
-                    ticker=agent_ticker,
-                    description="Full lifecycle test agent"
+                    description="Full lifecycle test agent",
+                    category=AGENT_CATEGORY_OTHER
                 )
                 
                 assert result["status"] == "success", "Registration result status is not success"
