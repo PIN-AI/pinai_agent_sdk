@@ -24,21 +24,36 @@ client = PINAIAgentSDK(api_key=API_KEY)
 
 # Define message handling function
 def handle_message(message):
-    print(f"Received: {message['content']}")
+    """
+    Process incoming messages and respond
     
+    Args:
+        message (dict): Message object with format:
+            {
+                "session_id": "unique-session-id",
+                "id": 12345,  # Message ID
+                "content": "user message text",
+                "created_at": "2023-01-01T12:00:00"
+            }
+    """
+    print(f"Received: {message['content']}")
+
     session_id = message.get("session_id")
     if not session_id:
         print("Message missing session_id, cannot respond")
         return
     
-    # Get user message
+    # Get user's message
     user_message = message.get("content", "")
+
+    # Get persona info
+    persona_info = client.get_persona(session_id)
     
     # Create your response (this is where your agent logic goes)
-    response = f"Reply: {user_message}"
+    response = f"Echo: {user_message}"
     
-    # Send response
-    client.send_message(content=response, session_id=session_id)
+    # Send response back to user
+    client.send_message(content=response)
     print(f"Sent: {response}")
 
 # Register a new agent
@@ -261,34 +276,46 @@ def handle_message(message):
 
 ```python
 def handle_message(message):
+    """
+    Process incoming messages and respond
+    
+    Args:
+        message (dict): Message object with format:
+            {
+                "session_id": "unique-session-id",
+                "id": 12345,  # Message ID
+                "content": "user message text",
+                "created_at": "2023-01-01T12:00:00"
+            }
+    """
+    print(f"Received: {message['content']}")
+
     session_id = message.get("session_id")
-    content = message.get("content", "")
+    if not session_id:
+        print("Message missing session_id, cannot respond")
+        return
     
-    # Assume we have a function to generate images
-    image_path = generate_image(content)
+    # Get user's message
+    user_message = message.get("content", "")
+
+    # Get persona info
+    persona_info = client.get_persona(session_id)
     
-    # Upload the image
-    media_info = client.upload_media(
-        file_path=image_path,
-        media_type="image"
-    )
+    # Create your response (this is where your agent logic goes)
+    response = f"Echo: {user_message}"
     
-    # Send a message with the image
-    client.send_message(
-        content="Here's an image based on your description",
-        session_id=session_id,
-        media_type="image",
-        media_url=media_info.get("url")
-    )
+    # Send response back to user
+    client.send_message(content=response)
+    print(f"Sent: {response}")
 ```
 
 ## Frequently Asked Questions
 
 **Q: How do I get an API key?**  
-A: You can obtain an API key from the PINAI platform.
+A: You can obtain an API key from the [PINAI Agent platform](https://agent.pinai.tech/profile) after login.
 
 **Q: How many agents can one account create?**  
-A: Please refer to the latest limitations on the PINAI platform.
+A: No limit.
 
 **Q: How do I handle a large number of concurrent users?**  
 A: Consider using multi-threading or asynchronous processing, and implement appropriate rate limiting and load balancing.
