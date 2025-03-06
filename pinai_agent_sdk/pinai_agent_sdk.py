@@ -11,6 +11,15 @@ import os
 import uuid
 from typing import Dict, List, Any, Optional, Callable, Union
 from urllib.parse import urljoin
+from web3 import Web3
+from eth_account import Account
+
+CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
+# DEFAULT_RPC = "https://sepolia.base.org"
+DEFAULT_RPC = "http://127.0.0.1:8545"
+MIN_STAKE = 0
+REGISTRATION_FEE = 0
+MAX_STRING_LENGTH = 256
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -21,7 +30,7 @@ class PINAIAgentSDK:
     SDK for PINAI Agent API
     """
     
-    def __init__(self, api_key: str, base_url: str = "https://emute3dbtc.us-east-1.awsapprunner.com", timeout: int = 30, polling_interval: float = 1.0):
+    def __init__(self, api_key: str, base_url: str = "https://emute3dbtc.us-east-1.awsapprunner.com", timeout: int = 30, polling_interval: float = 1.0, privatekey: Optional[str] = None, blockchainRPC: Optional[str] = None):
         """
         Initialize PINAIAgentSDK
 
@@ -30,6 +39,8 @@ class PINAIAgentSDK:
             base_url (str, optional): Base URL for API. Defaults to "https://emute3dbtc.us-east-1.awsapprunner.com/users/api-keys".
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
             polling_interval (float, optional): Interval in seconds between message polls. Defaults to 1.0.
+            privatekey (str, optional): Private key for blockchain interaction. If provided, blockchain functionality will be enabled.
+            blockchainRPC (str, optional): Blockchain RPC URL. Defaults to "https://sepolia.base.org".
         """
         self.api_key = api_key
         self.base_url = base_url
@@ -48,6 +59,35 @@ class PINAIAgentSDK:
             self.base_url += '/'
             
         logger.info(f"PINAIAgentSDK initialized with base URL: {base_url}")
+        
+        # 初始化区块链组件
+        self.web3 = None
+        self.contract = None
+        self.account = None
+        
+        if privatekey:
+            try:
+                # 初始化 Web3
+                rpc_url = blockchainRPC or DEFAULT_RPC
+                self.web3 = Web3(Web3.HTTPProvider(rpc_url))
+                
+                # 初始化账户
+                self.account = Account.from_key(privatekey)
+                
+                # 加载合约 ABI 并创建合约实例
+                abi_path = os.path.join(os.path.dirname(__file__), 'AgentManage.abi.json')
+                with open(abi_path) as f:
+                    contract_abi = json.load(f)['abi']
+                
+                self.contract = self.web3.eth.contract(
+                    address=Web3.to_checksum_address(CONTRACT_ADDRESS),
+                    abi=contract_abi
+                )
+                
+                logger.info(f"Blockchain components initialized with account: {self.account.address}")
+            except Exception as e:
+                logger.error(f"Failed to initialize blockchain components: {e}")
+                raise
         
     def _make_request(self, method: str, endpoint: str, data: Dict = None, headers: Dict = None, files: Dict = None) -> Dict:
         """
@@ -107,7 +147,7 @@ class PINAIAgentSDK:
             logger.error(f"Request error: {e}")
             raise
             
-    def register_agent(self, name: str, ticker: str, description: str, cover: str = None, metadata: Dict = None) -> Dict:
+    def register_agent(self, name: str, ticker: str, description: str, cover: str = None, metadata: Dict = None, agent_owner: Optional[str] = None) -> Dict:
         """
         Register a new agent
 
@@ -117,6 +157,7 @@ class PINAIAgentSDK:
             description (str): Agent description
             cover (str, optional): Agent cover image URL. Defaults to None.
             metadata (Dict, optional): Additional metadata. Defaults to None.
+            agent_owner (str, optional): Ethereum address of the agent owner. If not provided, the current account address will be used.
 
         Returns:
             Dict: Registration response including agent ID
@@ -132,14 +173,113 @@ class PINAIAgentSDK:
             
         if metadata:
             data["metadata"] = metadata
-            
+        
+        # First make the HTTP request to get an agent ID
         response = self._make_request("POST", "api/sdk/register_agent", data=data)
         
         # Save agent info for later use
         self._agent_info = response
         
+        # If blockchain functionality is enabled, call the smart contract
+        if self.web3 and self.contract and self.account:
+            try:
+                # Get the agent ID from the response
+                agent_id = response.get('id')
+                if not agent_id:
+                    logger.error("Failed to get agent ID from API response")
+                    raise ValueError("Failed to get agent ID from API response")
+                
+                # Check and truncate string parameters
+                safe_name = self._truncate_string(name)
+                safe_description = self._truncate_string(description)
+                # Use ticker as service endpoint
+                safe_endpoint = self._truncate_string(ticker)
+                
+                # Get nonce
+                nonce = self.web3.eth.get_transaction_count(self.account.address)
+                
+                # Build contract transaction
+                # Note: Contract requires sending MIN_STAKE + REGISTRATION_FEE
+                min_stake = self.web3.to_wei(MIN_STAKE, 'ether')
+                registration_fee = self.web3.to_wei(REGISTRATION_FEE, 'ether')
+                total_value = min_stake + registration_fee
+                
+                # Set reasonable gas limit
+                gas_limit = 500000
+                
+                # Use provided agent_owner or default to current account address
+                owner_address = agent_owner if agent_owner else self.account.address
+                # Convert to checksum address
+                owner_address = Web3.to_checksum_address(owner_address)
+                
+                # Use ticker hash as category
+                category = self.web3.keccak(text=ticker)
+                
+                # Build contract transaction
+                contract_txn = self.contract.functions.create(
+                    owner_address,
+                    safe_name,
+                    safe_endpoint,
+                    safe_description,
+                    agent_id,
+                    category
+                ).build_transaction({
+                    'from': self.account.address,
+                    'nonce': nonce,
+                    'value': total_value,
+                    'gas': gas_limit,
+                    'type': '0x2',  # EIP-1559
+                    'maxFeePerGas': self.web3.eth.max_priority_fee + (2 * self.web3.eth.get_block('latest')['baseFeePerGas']),
+                    'maxPriorityFeePerGas': self.web3.eth.max_priority_fee,
+                })
+                
+                # Sign transaction
+                signed_txn = self.account.sign_transaction(contract_txn)
+                
+                # Send transaction
+                tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+                
+                # Wait for transaction confirmation
+                tx_receipt = self.web3.eth.wait_for_transaction_receipt(
+                    tx_hash,
+                    timeout=30,
+                    poll_latency=1
+                )
+                
+                if tx_receipt['status'] != 1:
+                    logger.error("Blockchain transaction failed")
+                    raise Exception("Blockchain transaction failed")
+                
+                logger.info(f"Agent registered on blockchain with agent_id: {agent_id}")
+                
+            except Exception as e:
+                logger.error(f"Blockchain interaction failed: {e}")
+                # Don't raise the exception here, just log it
+                # We already have the agent ID from the API, so we can continue
+                logger.warning("Continuing with API-only registration due to blockchain error")
+        
         logger.info(f"Agent registered: {name} (ID: {response.get('id')})")
         return response
+    
+    def _truncate_string(self, input_str: str, max_length: int = MAX_STRING_LENGTH) -> str:
+        """
+        Truncate string to ensure it doesn't exceed the maximum length
+
+        Args:
+            input_str (str): Input string
+            max_length (int, optional): Maximum length. Defaults to MAX_STRING_LENGTH.
+
+        Returns:
+            str: Truncated string
+        """
+        if not input_str:
+            return ""
+        
+        if len(input_str) <= max_length:
+            return input_str
+        
+        logger.warning(f"String truncated from {len(input_str)} to {max_length} characters")
+        return input_str[:max_length]
         
     def unregister_agent(self, agent_id: int = None) -> Dict:
         """
@@ -156,14 +296,59 @@ class PINAIAgentSDK:
             if not self._agent_info or "id" not in self._agent_info:
                 raise ValueError("No agent ID provided and no registered agent found")
             agent_id = self._agent_info["id"]
-            
-
+        
+        # First make the HTTP request to unregister the agent
         response = self._make_request("POST", f"/sdk/delete/agent/{agent_id}")
+        
+        # If blockchain functionality is enabled, call the smart contract
+        if self.web3 and self.contract and self.account:
+            try:
+                # Get nonce
+                nonce = self.web3.eth.get_transaction_count(self.account.address)
+                
+                # Set reasonable gas limit
+                gas_limit = 300000
+                
+                # Call updateAgentStatusByAgentId method, set status to 2 (disabled)
+                contract_txn = self.contract.functions.updateAgentStatusByAgentId(
+                    agent_id,
+                    2  # Status 2 means disabled
+                ).build_transaction({
+                    'from': self.account.address,
+                    'nonce': nonce,
+                    'gas': gas_limit,
+                    'type': '0x2',  # EIP-1559
+                    'maxFeePerGas': self.web3.eth.max_priority_fee + (2 * self.web3.eth.get_block('latest')['baseFeePerGas']),
+                    'maxPriorityFeePerGas': self.web3.eth.max_priority_fee,
+                })
+                
+                # Sign transaction
+                signed_txn = self.account.sign_transaction(contract_txn)
+                
+                # Send transaction
+                tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+                
+                # Wait for transaction confirmation
+                tx_receipt = self.web3.eth.wait_for_transaction_receipt(
+                    tx_hash,
+                    timeout=30,
+                    poll_latency=1
+                )
+                
+                if tx_receipt['status'] != 1:
+                    logger.error("Blockchain transaction failed")
+                    logger.warning("Continuing with API-only unregistration due to blockchain error")
+                else:
+                    logger.info(f"Agent unregistered on blockchain with agent_id: {agent_id}")
+                
+            except Exception as e:
+                logger.error(f"Blockchain interaction failed: {e}")
+                logger.warning("Continuing with API-only unregistration due to blockchain error")
         
         # Clear agent info if it matches
         if self._agent_info and self._agent_info.get("id") == agent_id:
             self._agent_info = None
-            
+        
         logger.info(f"Agent unregistered: {agent_id}")
         return response
     
