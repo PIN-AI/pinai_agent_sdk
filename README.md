@@ -1,211 +1,304 @@
-# PINAI Agent SDK
+# PINAI Agent SDK Development Guide
 
-PINAI Agent SDK is the official Python SDK for the PINAI platform, enabling developers to easily build, register, and manage PINAI Agents with seamless platform integration.
+## Introduction
+
+PINAI Agent SDK is a powerful toolkit that allows developers to quickly create and deploy intelligent agents. This guide will help you get started and provide best practices and API references.
 
 ## Installation
-
-Install PINAI Agent SDK using pip:
 
 ```bash
 pip install pinai-agent-sdk
 ```
 
-## Basic Usage
+## Quick Start
 
-Here's a basic example of using the PINAI Agent SDK:
+Here are the basic steps to create a simple agent:
 
 ```python
-from pinai_agent_sdk import PINAIAgentSDK
+import os
+from pinai_agent_sdk import PINAIAgentSDK, AGENT_CATEGORY_SOCIAL
 
-# Initialize SDK
-client = PINAIAgentSDK(
-    api_key="your-pinai-api-key"  # Replace with your PINAI API Key
-)
+# Initialize the SDK client
+API_KEY = os.environ.get("PINAI_API_KEY", "your_api_key_here")
+client = PINAIAgentSDK(api_key=API_KEY)
+
+# Define message handling function
+def handle_message(message):
+    print(f"Received: {message['content']}")
+    
+    session_id = message.get("session_id")
+    if not session_id:
+        print("Message missing session_id, cannot respond")
+        return
+    
+    # Get user message
+    user_message = message.get("content", "")
+    
+    # Create your response (this is where your agent logic goes)
+    response = f"Reply: {user_message}"
+    
+    # Send response
+    client.send_message(content=response, session_id=session_id)
+    print(f"Sent: {response}")
 
 # Register a new agent
 agent_info = client.register_agent(
-    name="My Agent",
-    ticker="MYAG",
-    description="A general purpose agent",
-    cover="https://example.com/cover.png",  # Optional
-    metadata={"version": "1.0"}  # Optional additional metadata
+    name="My Hackathon Agent",
+    description="A simple agent built during the hackathon",
+    category=AGENT_CATEGORY_SOCIAL
 )
+agent_id = agent_info.get("id")
+print(f"Agent registered with ID: {agent_id}")
 
-# Print agent ID
-print(f"Agent registered with ID: {agent_info['id']}")
-
-# Define message handler function
-def handle_message(message):
-    """
-    Handle messages received from the server
-    
-    Message format:
-    {
-        "session_id": "session-id",
-        "id": 12345,  # Message ID
-        "content": "message content",
-        "created_at": "2025-03-05T12:30:00"  # ISO 8601 timestamp
-    }
-    """
-    print(f"Message received: {message['content']}")
-    session_id = message["session_id"]
-    
-    # Reply to message
-    client.send_message(
-        content="This is a reply message",
-        session_id=session_id
-    )
-    
-    # You can also reply with an image
-    # First upload the image
-    # media_result = client.upload_media("path/to/image.jpg", "image")
-    # Then send a message with the image
-    # client.send_message(
-    #     content="This is a reply with an image",
-    #     session_id=session_id,
-    #     media_type="image",
-    #     media_url=media_result["media_url"]
-    # )
-
-# Start listening for new messages (non-blocking by default)
-client.start(on_message_callback=handle_message)
-
-# Keep the application running until interrupted
-# Option 1: Use run_forever() method (recommended)
-client.run_forever()
-
-# Option 2: Use blocking mode
-# client.start(on_message_callback=handle_message, blocking=True)
+# Start the agent and listen for messages
+print("Starting agent... Press Ctrl+C to stop")
+client.start_and_run(
+    on_message_callback=handle_message,
+    agent_id=agent_id
+)
 ```
 
-## Key Features
+## Core Concepts
+
+### Agent
+
+An agent is the intelligent assistant you create that can interact with users. Each agent has a unique ID, name, description, and category.
+
+### Session
+
+A session represents a conversation with a user. Each session has a unique `session_id` used to track interactions with a specific user.
+
+### Message
+
+A message is the unit of information exchanged between the agent and users. Messages can contain text content and media (images, videos, audio, or files).
+
+## Agent Categories
+
+PINAI platform supports the following agent categories:
+
+| Category Constant | Display Name | Description |
+|---------|---------|------|
+| `AGENT_CATEGORY_SOCIAL` | Social | Social agents |
+| `AGENT_CATEGORY_DAILY` | Daily Life/Utility | Daily life and utility agents |
+| `AGENT_CATEGORY_PRODUCTIVITY` | Productivity | Productivity tool agents |
+| `AGENT_CATEGORY_WEB3` | Web3 | Web3-related agents |
+| `AGENT_CATEGORY_SHOPPING` | Shopping | Shopping agents |
+| `AGENT_CATEGORY_FINANCE` | Finance | Finance agents |
+| `AGENT_CATEGORY_AI_CHAT` | AI Chat | AI chat agents |
+| `AGENT_CATEGORY_OTHER` | Other | Other types of agents |
+
+## API Reference
 
 ### Initializing the SDK
 
 ```python
+from pinai_agent_sdk import PINAIAgentSDK
+
 client = PINAIAgentSDK(
-    api_key="your-pinai-api-key",
-    base_url="https://dev-web.pinai.tech/",  # Optional, defaults to https://dev-web.pinai.tech/
-    timeout=30,  # Optional, request timeout in seconds, defaults to 30
-    polling_interval=1.0  # Optional, interval in seconds between message polls, defaults to 1.0
+    api_key="your_api_key",  # Required: PINAI API key
+    base_url="https://api.example.com",  # Optional: API base URL
+    timeout=30,  # Optional: Request timeout in seconds
+    polling_interval=1.0  # Optional: Message polling interval in seconds
 )
 ```
 
 ### Registering an Agent
 
 ```python
-response = client.register_agent(
-    name="My Agent",
-    ticker="MYAG",  # Usually 4 uppercase letters
-    description="Agent description",
-    cover="https://example.com/cover.png",  # Optional, cover image URL
-    metadata={"version": "1.0", "author": "Your Name"}  # Optional
+agent_info = client.register_agent(
+    name="My Agent",  # Required: Agent name
+    description="This is an example agent",  # Required: Agent description
+    category=AGENT_CATEGORY_SOCIAL,  # Required: Agent category
+    wallet="your_wallet_address",  # Optional: Wallet address
+    cover="cover_image_url",  # Optional: Cover image URL
+    metadata={"key": "value"}  # Optional: Additional metadata
 )
-
-# Response contains the agent_id
-agent_id = response["id"]
-```
-
-### Listening for Messages
-
-```python
-def handle_message(message):
-    # Process received message
-    print(f"Message received: {message}")
-    session_id = message["session_id"]
-    
-    # Reply to message
-    client.send_message(content="Reply content", session_id=session_id)
-
-# Start listening for new messages in the background
-client.start(on_message_callback=handle_message)
-
-# To start in blocking mode (will not return until stopped)
-# client.start(on_message_callback=handle_message, blocking=True)
-
-# Keep the application running until interrupted
-client.run_forever()  # This method will block until KeyboardInterrupt
-```
-
-### Sending Messages
-
-```python
-# Send text-only message
-client.send_message(
-    content="This is a message",
-    session_id="session_12345"
-)
-
-# Send message with image
-client.send_message(
-    content="This is a message with an image",
-    session_id="session_12345",
-    media_type="image",
-    media_url="https://example.com/image.jpg"
-)
-```
-
-### Uploading Media
-
-```python
-# Upload an image
-media_result = client.upload_media("path/to/image.jpg", "image")
-image_url = media_result["media_url"]
-
-# Upload other types of media
-# Supported media types: "image", "video", "audio", "file"
-video_result = client.upload_media("path/to/video.mp4", "video")
-```
-
-### Getting Persona Information
-
-```python
-# Get persona information associated with a session
-persona = client.get_persona(session_id="session_12345")
-print(f"Persona name: {persona['name']}")
-```
-
-### Stopping the Listener
-
-```python
-# Stop listening for messages and clean up resources
-client.stop()
 ```
 
 ### Unregistering an Agent
 
 ```python
-# Using the registered agent
-client.unregister_agent()
-
-# Or specify an agent_id
-client.unregister_agent(agent_id=123)
+result = client.unregister_agent(agent_id=123)
 ```
 
-## Exception Handling
+### Starting an Agent
 
-The SDK will raise exceptions when errors occur. It's recommended to use try-except blocks to handle potential exceptions:
+```python
+# Non-blocking mode
+client._start(
+    on_message_callback=handle_message,
+    agent_id=123,
+    blocking=False
+)
+
+# Blocking mode (until Ctrl+C)
+client.start_and_run(
+    on_message_callback=handle_message,
+    agent_id=123
+)
+```
+
+### Sending Messages
+
+```python
+response = client.send_message(
+    content="Hello, world!",  # Required: Message content
+    session_id="unique-session-id",  # Optional: Session ID
+    media_type="image",  # Optional: Media type, default is "none"
+    media_url="https://example.com/image.jpg",  # Optional: Media URL
+    meta_data={"key": "value"}  # Optional: Additional metadata
+)
+```
+
+### Getting User Information
+
+```python
+persona = client.get_persona(session_id="unique-session-id")
+```
+
+### Uploading Media
+
+```python
+media_info = client.upload_media(
+    file_path="/path/to/image.jpg",  # File path
+    media_type="image"  # Media type: "image", "video", "audio", "file"
+)
+media_url = media_info.get("url")
+```
+
+## Media Types and Limitations
+
+| Media Type | Supported Extensions | Size Limit |
+|---------|------------|---------|
+| image | .jpg, .jpeg, .png, .gif, .webp | 10MB |
+| video | .mp4, .webm, .mov | 100MB |
+| audio | .mp3, .wav, .ogg | 50MB |
+| file | .pdf, .txt, .zip, .docx | 20MB |
+
+## Error Handling
+
+The SDK provides various exception types to help handle different error scenarios:
+
+- `AuthenticationError`: API authentication failure (401 errors)
+- `PermissionError`: Insufficient permissions (403 errors)
+- `ResourceNotFoundError`: Requested resource not found (404 errors)
+- `ResourceConflictError`: Resource conflict (409 errors)
+- `ValidationError`: Request validation failure (400 errors)
+- `ServerError`: Server returns 5xx errors
+- `NetworkError`: Network connection issues
+
+Example:
 
 ```python
 try:
-    client.register_agent(name="My Agent", ticker="MYAG", description="Agent description")
+    client.send_message(content="Hello")
+except ValidationError as e:
+    print(f"Validation error: {e}")
+except AuthenticationError as e:
+    print(f"Authentication error: {e}")
 except Exception as e:
-    print(f"Error registering agent: {e}")
+    print(f"Other error: {e}")
 ```
 
-## Thread Safety
+## Best Practices
 
-The SDK uses threading internally for message polling, ensure proper usage in multi-threaded environments.
+### 1. Securely Store API Keys
 
-## Logging
-
-The SDK uses the Python standard library's `logging` module. To customize the log level:
+Don't hardcode API keys in your code. Use environment variables or secure key management services.
 
 ```python
-import logging
-logging.getLogger("PINAIAgentSDK").setLevel(logging.DEBUG)
+import os
+API_KEY = os.environ.get("PINAI_API_KEY")
 ```
 
-## License
+### 2. Implement Robust Message Handling
 
-This SDK is licensed under the MIT License. See the LICENSE file for details.
+Always check if messages contain necessary fields and handle exceptions properly.
+
+```python
+def handle_message(message):
+    if not message or "content" not in message:
+        print("Received invalid message")
+        return
+    
+    session_id = message.get("session_id")
+    if not session_id:
+        print("Message missing session_id, cannot respond")
+        return
+    
+    # Process message...
+```
+
+### 3. Use Asynchronous Processing for Long-Running Tasks
+
+For tasks that require long processing times, consider using asynchronous processing to avoid blocking the message loop.
+
+### 4. Regularly Save Agent State
+
+If your agent needs to maintain state, save it regularly to prevent data loss.
+
+### 5. Monitoring and Logging
+
+Implement appropriate logging and monitoring to track your agent's performance and issues in production.
+
+## Example Applications
+
+### Echo Bot
+
+```python
+def handle_message(message):
+    session_id = message.get("session_id")
+    content = message.get("content", "")
+    
+    # Simply reply with the user's message
+    client.send_message(
+        content=f"You said: {content}",
+        session_id=session_id
+    )
+```
+
+### Image Generation Bot
+
+```python
+def handle_message(message):
+    session_id = message.get("session_id")
+    content = message.get("content", "")
+    
+    # Assume we have a function to generate images
+    image_path = generate_image(content)
+    
+    # Upload the image
+    media_info = client.upload_media(
+        file_path=image_path,
+        media_type="image"
+    )
+    
+    # Send a message with the image
+    client.send_message(
+        content="Here's an image based on your description",
+        session_id=session_id,
+        media_type="image",
+        media_url=media_info.get("url")
+    )
+```
+
+## Frequently Asked Questions
+
+**Q: How do I get an API key?**  
+A: You can obtain an API key from the PINAI platform.
+
+**Q: How many agents can one account create?**  
+A: Please refer to the latest limitations on the PINAI platform.
+
+**Q: How do I handle a large number of concurrent users?**  
+A: Consider using multi-threading or asynchronous processing, and implement appropriate rate limiting and load balancing.
+
+## Support and Resources
+
+- [PINAI Official Documentation](https://docs.pinai.com)
+- [GitHub Repository](https://github.com/PIN-AI/pinai_agent_sdk)
+- [Community Forum](https://community.pinai.com)
+
+---
+
+Good luck with your Hackathon! If you have any questions, feel free to contact the PINAI team. 
