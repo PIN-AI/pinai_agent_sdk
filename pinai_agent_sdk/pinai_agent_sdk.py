@@ -709,10 +709,35 @@ class PINAIAgentSDK:
         
         if file_ext not in valid_extensions[media_type]:
             raise ValidationError(f"Invalid file extension for {media_type}: {file_ext}. Supported extensions: {', '.join(valid_extensions[media_type])}")
+        
+        # MIME类型映射
+        mime_types = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".mp4": "video/mp4",
+            ".webm": "video/webm",
+            ".mov": "video/quicktime",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".ogg": "audio/ogg",
+            ".pdf": "application/pdf",
+            ".txt": "text/plain",
+            ".zip": "application/zip",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        }
             
         try:
+            filename = os.path.basename(file_path)
+            mime_type = mime_types.get(file_ext, "application/octet-stream")
+            
             with open(file_path, 'rb') as f:
-                files = {'file': f}
+                # 按照curl命令的格式设置文件上传参数
+                files = {
+                    'file': (filename, f, mime_type)
+                }
                 data = {'media_type': media_type}
                 
                 response = self._make_request(
@@ -722,7 +747,7 @@ class PINAIAgentSDK:
                     files=files
                 )
                 
-            logger.info(f"Media uploaded: {os.path.basename(file_path)} as {media_type}")
+            logger.info(f"Media uploaded: {filename} as {media_type}")
             return response
         except Exception as e:
             logger.error(f"Error uploading media: {e}")

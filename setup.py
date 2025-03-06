@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="pinai-agent-sdk",
-    version="0.1.13",
+    version="0.1.14",
     packages=find_packages(),
     install_requires=requirements,
     author="smile",
