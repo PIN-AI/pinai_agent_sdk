@@ -26,9 +26,17 @@ def handle_message(message):
             }
     """
     print(f"Received: {message['content']}")
+
+    session_id = message.get("session_id")
+    if not session_id:
+        print("Message missing session_id, cannot respond")
+        return
     
     # Get user's message
     user_message = message.get("content", "")
+
+    # Get persona info
+    persona_info = client.get_persona(session_id)
     
     # Create your response (this is where your agent logic goes)
     response = f"Echo: {user_message}"
@@ -52,18 +60,10 @@ def main():
         agent_id = agent_info.get("id")
         print(f"Agent registered with ID: {agent_id}")
         """
-        agent_info = client.register_agent(
-            name="My Hackathon Agent",
-            description="A simple agent built during the hackathon",
-            category=AGENT_CATEGORY_SOCIAL,  # Choose from available categories
-            # Optional: wallet="your_wallet_address"
-        )
-        agent_id = agent_info.get("id")
-        print(f"Agent registered with ID: {agent_id}")
         
         # Option 2: Use existing agent (after registration)
         # Replace 123 with your actual agent ID from registration
-        # agent_id = 18
+        agent_id = 28
         
         print("Starting agent... Press Ctrl+C to stop")
         
