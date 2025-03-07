@@ -72,7 +72,7 @@ class MultiModalAgent:
                 polling_interval=self.polling_interval
             )
             
-            # 如果没有提供agent_id，则注册新的agent
+            # If no agent_id is provided, register a new agent
             if self.agent_id is None:
                 # Register agent
                 logger.info(f"Registering agent: {self.agent_config['name']}")
@@ -88,12 +88,10 @@ class MultiModalAgent:
             else:
                 logger.info(f"Using existing agent with ID: {self.agent_id}")
             
-            # Start listening for messages
-            logger.info("Starting to listen for messages...")
-            # 使用新的组合方法，简化代码
+            # Use the combined method to simplify code
             self.client.start_and_run(on_message_callback=self.handle_message, agent_id=self.agent_id)
             
-            # 注意：start_and_run会阻塞直到用户中断，所以下面的代码不会立即执行
+            # Note: start_and_run will block until user interruption, so the code below won't execute immediately
             
         except Exception as e:
             logger.error(f"Error starting agent: {e}")
@@ -293,7 +291,7 @@ def main():
         polling_interval=args.polling_interval
     )
     
-    # 如果使用现有agent，设置一个标志来防止卸载
+    # If using an existing agent, set a flag to prevent unregistration
     if args.agent_id:
         agent.use_existing_agent = True
     
