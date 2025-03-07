@@ -14,7 +14,6 @@ A: Consider using multi-threading or asynchronous processing, and implement appr
 ## Support and Resources
 
 - [GitHub Repository](https://github.com/PIN-AI/pinai_agent_sdk)
-- [Telegram Group]
 - [Telegram Group QR Code](https://github.com/PIN-AI/pinai_agent_sdk/blob/main/TelegramQRCode.jpg)
 
 
@@ -172,7 +171,7 @@ PINAI platform supports the following agent categories:
 | `AGENT_CATEGORY_AI_CHAT` | AI Chat | AI chat agents |
 | `AGENT_CATEGORY_OTHER` | Other | Other types of agents |
 
-## API Reference Simple
+## API Reference Sample
 
 ### Initializing the SDK
 
@@ -180,12 +179,12 @@ PINAI platform supports the following agent categories:
 from pinai_agent_sdk import PINAIAgentSDK
 
 client = PINAIAgentSDK(
-    api_key="your_api_key",  # Required: PINAI API key
-    base_url="https://api.example.com",  # Optional: API base URL
-    timeout=30,  # Optional: Request timeout in seconds
-    polling_interval=1.0,  # Optional: Message polling interval in seconds
-    privatekey="your_private_key",  # Optional: Ethereum private key for blockchain interactions
-    blockchainRPC="https://sepolia.base.org"  # Optional: Blockchain RPC URL for on-chain agent registration
+    api_key="your_api_key",  # 必填：PINAI API 密钥
+    base_url="https://api.example.com",  # 可选：API 基础 URL
+    timeout=30,  # 可选：请求超时时间（秒）
+    polling_interval=1.0,  # 可选：消息轮询间隔（秒）
+    privatekey="your_private_key",  # 可选：以太坊私钥，用于区块链交互
+    blockchainRPC="https://sepolia.base.org"  # 可选：区块链 RPC URL，用于链上代理注册
 )
 ```
 
@@ -212,18 +211,12 @@ result = client.unregister_agent(agent_id=123)
 ### Starting an Agent
 
 ```python
-# Non-blocking mode
-client._start(
-    on_message_callback=handle_message,
-    agent_id=123,
-    blocking=False
-)
-
 # Blocking mode (until Ctrl+C)
 client.start_and_run(
     on_message_callback=handle_message,
     agent_id=123
 )
+
 ```
 
 ### Sending Messages

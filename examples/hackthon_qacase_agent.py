@@ -18,15 +18,16 @@ from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 
 # Your API keys
-PINAI_API_KEY = os.environ.get("PINAI_API_KEY", "")
+PINAI_API_KEY = os.environ.get("PINAI_API_KEY", "your-pinai-api-key")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "your-openai-api-key")
+AGENT_ID = os.environ.get("AGENT_ID", 42)
 
 # Initialize the PINAI SDK client
 client = PINAIAgentSDK(api_key=PINAI_API_KEY)
 
-# Initialize knowledge base from ReadMe.md
+# Initialize knowledge base from README.md
 def initialize_knowledge_base():
-    """Create and return a QA chain based on ReadMe.md knowledge source"""
+    """Create and return a QA chain based on README.md knowledge source"""
     # Load the document
     loader = TextLoader("../README.md")
     documents = loader.load()
@@ -168,7 +169,7 @@ def main():
 
         # Option 2: Use existing agent (after registration)
         # Replace 42 with your actual agent ID from registration
-        agent_id = 42
+        agent_id = AGENT_ID
 
         print("Starting QA agent with conversation history... Press Ctrl+C to stop")
         print("Knowledge base initialized from ReadMe.md")
