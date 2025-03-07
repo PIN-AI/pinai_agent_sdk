@@ -1,3 +1,4 @@
+# QA
 
 ## Frequently Asked Questions
 
@@ -14,7 +15,7 @@ A: Consider using multi-threading or asynchronous processing, and implement appr
 
 - [GitHub Repository](https://github.com/PIN-AI/pinai_agent_sdk)
 - [Telegram Group]
-- ![Telegram QR Code](TelegramQRCode.jpg)
+- [Telegram Group QR Code](https://github.com/PIN-AI/pinai_agent_sdk/blob/main/TelegramQRCode.jpg)
 
 
 ---
