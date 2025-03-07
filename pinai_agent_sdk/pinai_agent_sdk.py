@@ -20,6 +20,79 @@ MIN_STAKE = 0
 REGISTRATION_FEE = 0
 MAX_STRING_LENGTH = 256
 
+CONTRACT_ABI = [
+    # VERSION
+    {
+        "inputs": [],
+        "name": "VERSION",
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # create
+    {
+        "inputs": [
+            {"internalType": "address", "name": "_agentOwner", "type": "address"},
+            {"internalType": "string", "name": "_agentName", "type": "string"},
+            {"internalType": "string", "name": "_serviceEndpoint", "type": "string"},
+            {"internalType": "string", "name": "_description", "type": "string"},
+            {"internalType": "uint256", "name": "_agentId", "type": "uint256"},
+            {"internalType": "bytes32", "name": "_category", "type": "bytes32"}
+        ],
+        "name": "create",
+        "outputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    # updateAgentStatusByAgentId
+    {
+        "inputs": [
+            {"internalType": "uint256", "name": "agentId", "type": "uint256"},
+            {"internalType": "enum AgentManager.AgentStatus", "name": "newStatus", "type": "uint8"}
+        ],
+        "name": "updateAgentStatusByAgentId",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    # getAgentByAgentId
+    {
+        "inputs": [{"internalType": "uint256", "name": "agentId", "type": "uint256"}],
+        "name": "getAgentByAgentId",
+        "outputs": [{
+            "components": [
+                {"internalType": "uint256", "name": "tokenId", "type": "uint256"},
+                {"internalType": "uint256", "name": "agentId", "type": "uint256"},
+                {"internalType": "string", "name": "name", "type": "string"},
+                {"internalType": "string", "name": "serviceEndpoint", "type": "string"},
+                {"internalType": "string", "name": "description", "type": "string"},
+                {"internalType": "bytes32", "name": "category", "type": "bytes32"},
+                {"internalType": "address", "name": "owner", "type": "address"},
+                {"internalType": "address", "name": "tba", "type": "address"},
+                {"internalType": "uint256", "name": "stakeAmount", "type": "uint256"},
+                {"internalType": "uint8", "name": "reputationScore", "type": "uint8"},
+                {"internalType": "enum AgentManager.AgentStatus", "name": "status", "type": "uint8"},
+                {"internalType": "uint64", "name": "lastActiveTime", "type": "uint64"},
+                {"internalType": "uint64", "name": "bidCount", "type": "uint64"},
+                {"internalType": "uint64", "name": "dealCount", "type": "uint64"}
+            ],
+            "internalType": "struct AgentManager.Agent",
+            "name": "",
+            "type": "tuple"
+        }],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # getAgentStatus
+    {
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "name": "getAgentStatus",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
 # Import constants
 from .constants import (
     AGENT_CATEGORY_SOCIAL,
@@ -119,13 +192,9 @@ class PINAIAgentSDK:
                 
                 self.account = Account.from_key(privatekey)
                 
-                abi_path = os.path.join(os.path.dirname(__file__), 'AgentManage.abi.json')
-                with open(abi_path) as f:
-                    contract_abi = json.load(f)['abi']
-                
                 self.contract = self.web3.eth.contract(
                     address=Web3.to_checksum_address(CONTRACT_ADDRESS),
-                    abi=contract_abi
+                    abi=CONTRACT_ABI
                 )
                 
                 logger.info(f"Blockchain components initialized with account: {self.account.address}")
