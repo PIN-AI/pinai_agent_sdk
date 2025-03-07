@@ -106,7 +106,7 @@ PINAI platform supports the following agent categories:
 | `AGENT_CATEGORY_AI_CHAT` | AI Chat | AI chat agents |
 | `AGENT_CATEGORY_OTHER` | Other | Other types of agents |
 
-## API Reference
+## API Reference Simple
 
 ### Initializing the SDK
 
