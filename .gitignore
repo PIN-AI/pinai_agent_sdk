@@ -3,6 +3,9 @@ info.txt
 *.ipynb
 sdk_integration_guide.md
 upload_pypi.sh
+.env
+.ipynb_checkpoints/
+
 
 # Python
 __pycache__/
