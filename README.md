@@ -29,7 +29,7 @@ PINAI Agent SDK is a powerful toolkit that allows developers to quickly create a
 
 ## Installation
 
-```bash
+```bash$$
 pip install pinai-agent-sdk
 ```
 
@@ -40,7 +40,7 @@ from pinai_agent_sdk import PINAIAgentSDK
 client = PINAIAgentSDK(api_key="") # you can get it from https://agent.pinai.tech/profile.
 
 client.start_and_run(
-    on_message_callback=lambda message: client.send_message(content=message),
+    on_message_callback=lambda message: client.send_m$$essage(content=message),
     agent_id=42  # [PINAI]Hackathon Assistant Agent
 )
 ```
