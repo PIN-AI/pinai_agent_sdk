@@ -299,7 +299,7 @@ class PINAIAgentSDK:
             >>> sdk.register_agent(
             ...     name="My Social Agent",
             ...     description="A social agent for chatting",
-            ...     category=AGENT_CATEGORY_SOCIAL
+            ...     category="social"
             ... )
         """
         if not name or not description or not category:
@@ -311,6 +311,7 @@ class PINAIAgentSDK:
             
         data = {
             "name": name,
+            "description": description,
             "category": category,
             "wallet": "0x0"
         }
