@@ -78,13 +78,13 @@ class PINAIAgentSDK:
     SDK for PINAI Agent API
     """
     
-    def __init__(self, api_key: str, base_url: str = "https://emute3dbtc.us-east-1.awsapprunner.com", timeout: int = 30, polling_interval: float = 1.0, privatekey: Optional[str] = None, blockchainRPC: Optional[str] = None):
+    def __init__(self, api_key: str, base_url: str = "https://dev-agent.api.pinai.tech", timeout: int = 30, polling_interval: float = 1.0, privatekey: Optional[str] = None, blockchainRPC: Optional[str] = None):
         """
         Initialize PINAIAgentSDK
 
         Args:
             api_key (str): PINAI API Key
-            base_url (str, optional): Base URL for API. Defaults to "https://emute3dbtc.us-east-1.awsapprunner.com/users/api-keys".
+            base_url (str, optional): Base URL for API. Defaults to "https://dev-agent.api.pinai.tech/users/api-keys".
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
             polling_interval (float, optional): Interval in seconds between message polls. Defaults to 1.0.
             privatekey (str, optional): Private key for blockchain interaction. If provided, blockchain functionality will be enabled.

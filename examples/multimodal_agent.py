@@ -32,7 +32,7 @@ class MultiModalAgent:
     A multimodal agent that can handle images in conversations
     """
     
-    def __init__(self, api_key, agent_id=None, base_url="https://emute3dbtc.us-east-1.awsapprunner.com", polling_interval=1.0):
+    def __init__(self, api_key, agent_id=None, base_url="https://dev-agent.api.pinai.tech", polling_interval=1.0):
         """Initialize the multimodal agent"""
         self.api_key = api_key
         self.base_url = base_url
@@ -275,7 +275,7 @@ def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Run a multimodal PINAI Agent")
     parser.add_argument("--api-key", default=os.environ.get("PINAI_API_KEY"), help="PINAI API Key (or set PINAI_API_KEY environment variable)")
-    parser.add_argument("--base-url", default="https://emute3dbtc.us-east-1.awsapprunner.com", help="API base URL")
+    parser.add_argument("--base-url", default="https://dev-agent.api.pinai.tech", help="API base URL")
     parser.add_argument("--polling-interval", type=float, default=1.0, help="Polling interval in seconds")
     parser.add_argument("--agent-id", type=int, help="Existing agent ID to use instead of creating a new one")
     args = parser.parse_args()
