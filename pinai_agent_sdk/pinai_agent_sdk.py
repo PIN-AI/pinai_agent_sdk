@@ -232,6 +232,12 @@ class PINAIAgentSDK:
                     status_code=response.status_code,
                     response=response
                 )
+            if response.status_code == 422:
+                raise ValidationError(
+                    f"Error parameters: {error_detail or 'Invalid parameters'}",
+                    status_code=response.status_code,
+                    response=response
+                )
             elif response.status_code >= 500:
                 raise ServerError(
                     f"Server error: {error_detail or f'The server returned status code {response.status_code}'}",
@@ -264,7 +270,7 @@ class PINAIAgentSDK:
             logger.error(f"Failed to parse response: {e}")
             raise PINAIAgentSDKError(f"Failed to parse response: {e}", response=response if 'response' in locals() else None)
             
-    def register_agent(self, name: str, description: str, category: str, wallet: str = None, cover: str = None, metadata: Dict = None, agent_owner: Optional[str] = None) -> Dict:
+    def register_agent(self, name: str, description: str, category: str = AGENT_CATEGORY_SOCIAL, wallet: str = "0x0", cover: str = None, metadata: Dict = None, agent_owner: Optional[str] = None) -> Dict:
         """
         Register a new agent
 
@@ -305,9 +311,8 @@ class PINAIAgentSDK:
             
         data = {
             "name": name,
-            "description": description,
             "category": category,
-            "display_category": CATEGORY_DISPLAY_NAMES[category]
+            "wallet": "0x0"
         }
         
         if wallet:
