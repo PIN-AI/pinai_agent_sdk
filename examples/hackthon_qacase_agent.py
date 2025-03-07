@@ -1,6 +1,6 @@
 """
 PINAI Agent SDK - Basic QA Agent
-Using README.md as knowledge source with conversation history
+gitp uUsing README.md as knowledge source with conversation history
 pip install pinai-agent-sdk langchain langchain-community langchain-text-splitters langchain-openai faiss-cpu
 """
 
