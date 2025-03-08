@@ -66,13 +66,12 @@ def test_register_agent_with_blockchain():
     with patch.object(sdk, '_make_request') as mock_request:
         mock_request.return_value = {"id": 123, "status": "success"}
         
-        # Register agent with specific owner
+        # Register agent with specific owner wallet
         result = sdk.register_agent(
             name="Test Agent",
             description="Test agent for blockchain interaction",
             category=AGENT_CATEGORY_SOCIAL,
-            wallet="0x1234567890123456789012345678901234567890",
-            agent_owner=test_owner.address
+            wallet=test_owner.address
         )
         
         # Verify HTTP API was called
@@ -139,7 +138,7 @@ def test_register_agent_without_owner():
     with patch.object(sdk, '_make_request') as mock_request:
         mock_request.return_value = {"id": 456, "status": "success"}
         
-        # Register agent without specifying owner
+        # Register agent without specifying owner (should use default wallet "0x0")
         result = sdk.register_agent(
             name="Test Agent",
             description="Test agent for blockchain interaction",

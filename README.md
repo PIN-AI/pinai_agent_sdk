@@ -156,6 +156,75 @@ A session represents a conversation with a user. Each session has a unique `sess
 
 A message is the unit of information exchanged between the agent and users. Messages can contain text content and media (images, videos, audio, or files).
 
+## Blockchain Integration
+
+### Direct Contract Interaction
+
+While the SDK provides a convenient way to register agents, you can also interact directly with the smart contract on the Base Sepolia network. The agent registry contract is deployed at:
+
+```
+0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089
+```
+
+You can verify transactions and contract interactions at [BaseScan](https://sepolia.basescan.org/address/0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089).
+
+### Creating Agents via Smart Contract
+
+To create an agent directly through the smart contract, you can call the `create()` method:
+
+```solidity
+function create(
+    address _agentOwner,    // Address that will own the agent
+    string memory _agentName,    // Agent name
+    string memory _serviceEndpoint,    // Agent service endpoint
+    string memory _description,    // Agent description
+    uint256 _agentId,    // External agent identifier
+    bytes32 _category    // Agent category
+) returns (uint256 tokenId)
+```
+
+The parameters map to SDK registration parameters as follows:
+- `_agentOwner`: The wallet address that will own the agent
+- `_agentName`: Maps to the `name` parameter in SDK registration
+- `_serviceEndpoint`: Maps to the `url` parameter in SDK registration
+- `_description`: Maps to the `description` parameter in SDK registration
+- `_agentId`: The unique identifier for your agent
+- `_category`: Maps to the `category` parameter in SDK registration
+
+Example web3.js interaction:
+
+```javascript
+const Web3 = require('web3');
+const web3 = new Web3('https://sepolia.base.org');
+
+const contractAddress = '0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089';
+const privateKey = 'your_private_key';
+
+async function createAgent(agentName, serviceEndpoint, description, agentId, category) {
+    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+    web3.eth.accounts.wallet.add(account);
+    
+    const contract = new web3.eth.Contract(
+        ABI, // you can get it from https://sepolia.basescan.org/address/0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089#code
+        contractAddress
+    );
+    
+    const tx = await contract.methods.create(
+        account.address,
+        agentName,
+        serviceEndpoint,
+        description,
+        agentId,
+        web3.utils.asciiToHex(category)
+    ).send({
+        from: account.address,
+        gas: 1000000
+    });
+    
+    return tx;
+}
+```
+
 ## Agent Categories
 
 PINAI platform supports the following agent categories:

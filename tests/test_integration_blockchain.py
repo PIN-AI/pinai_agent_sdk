@@ -184,14 +184,13 @@ def test_register_agent_with_blockchain():
             balance_before = 0
         
         try:
-            # Register agent, specifying owner
-            logger.info(f"Starting agent registration, owner: {test_owner.address}")
+            # Register agent with owner wallet
+            logger.info(f"Starting agent registration with owner wallet: {test_owner.address}")
             result = sdk.register_agent(
                 name=agent_name,
                 description="Test agent for blockchain interaction",
                 category=AGENT_CATEGORY_SOCIAL,
-                wallet=test_owner.address,
-                agent_owner=test_owner.address
+                wallet=test_owner.address
             )
             
             # Verify HTTP API was called
@@ -247,7 +246,7 @@ def test_register_agent_with_blockchain():
 
 @skip_if_not_local
 def test_register_agent_without_owner():
-    """Test registering agent without specifying owner (should default to sender)"""
+    """Test registering agent without specifying owner (should use default wallet)"""
     # Check blockchain connection
     try:
         test_blockchain_connection()
@@ -280,7 +279,7 @@ def test_register_agent_without_owner():
             balance_before = 0
         
         try:
-            # Register agent without specifying owner (should default to sender)
+            # Register agent without specifying owner (should use default wallet "0x0")
             logger.info(f"Starting agent registration without owner (defaults to sender: {sdk.account.address})")
             result = sdk.register_agent(
                 name=agent_name,

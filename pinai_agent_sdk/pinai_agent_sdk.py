@@ -339,7 +339,7 @@ class PINAIAgentSDK:
             logger.error(f"Failed to parse response: {e}")
             raise PINAIAgentSDKError(f"Failed to parse response: {e}", response=response if 'response' in locals() else None)
             
-    def register_agent(self, name: str, description: str, category: str = AGENT_CATEGORY_SOCIAL, wallet: str = "0x0", cover: str = None, metadata: Dict = None, agent_owner: Optional[str] = None) -> Dict:
+    def register_agent(self, name: str, description: str, category: str = AGENT_CATEGORY_SOCIAL, wallet: str = "0x0", cover: str = None, metadata: Dict = None) -> Dict:
         """
         Register a new agent
 
@@ -350,7 +350,6 @@ class PINAIAgentSDK:
             wallet (str, optional): Agent wallet address. Defaults to None.
             cover (str, optional): Agent cover image URL. Defaults to None.
             metadata (Dict, optional): Additional metadata. Defaults to None.
-            agent_owner (str, optional): Ethereum address of the agent owner. If not provided, the current account address will be used.
 
         Returns:
             Dict: Registration response including agent ID
@@ -439,8 +438,8 @@ class PINAIAgentSDK:
                 # Set reasonable gas limit - increase to handle complex contract operations
                 gas_limit = 800000 
                 
-                # Use provided agent_owner or default to current account address
-                owner_address = agent_owner if agent_owner else self.account.address
+                # Use wallet address as owner, if not provided use current account address
+                owner_address = wallet if wallet and wallet != "0x0" else self.account.address
                 # Convert to checksum address
                 owner_address = Web3.to_checksum_address(owner_address)
                 
