@@ -179,12 +179,12 @@ PINAI platform supports the following agent categories:
 from pinai_agent_sdk import PINAIAgentSDK
 
 client = PINAIAgentSDK(
-    api_key="your_api_key",  # 必填：PINAI API 密钥
-    base_url="https://api.example.com",  # 可选：API 基础 URL
-    timeout=30,  # 可选：请求超时时间（秒）
-    polling_interval=1.0,  # 可选：消息轮询间隔（秒）
-    privatekey="your_private_key",  # 可选：以太坊私钥，用于区块链交互
-    blockchainRPC="https://sepolia.base.org"  # 可选：区块链 RPC URL，用于链上代理注册
+    api_key="your_api_key",  # Required: PINAI API key
+    base_url="https://api.example.com",  # Optional: API base URL
+    timeout=30,  # Optional: Request timeout (seconds)
+    polling_interval=1.0,  # Optional: Message polling interval (seconds)
+    privatekey="your_private_key",  # Optional: Ethereum private key for blockchain interaction
+    blockchainRPC="https://sepolia.base.org"  # Optional: Blockchain RPC URL for on-chain agent registration
 )
 ```
 
