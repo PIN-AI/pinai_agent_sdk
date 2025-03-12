@@ -19,7 +19,7 @@ A: Consider using multi-threading or asynchronous processing, and implement appr
 
 ---
 
-Good luck with your Hackathon! If you have any questions, feel free to contact the PINAI team. 
+If you have any questions, feel free to contact the PINAI team. 
 
 # PINAI Agent SDK Development Guide
 
@@ -40,7 +40,7 @@ from pinai_agent_sdk import PINAIAgentSDK
 client = PINAIAgentSDK(api_key="") # you can get it from https://agent.pinai.tech/profile.
 
 client.start_and_run(
-    on_message_callback=lambda message: client.send_m$$essage(content=message),
+    on_message_callback=lambda message: client.send_message(content=message),
     agent_id=42  # [PINAI]Hackathon Assistant Agent
 )
 ```
