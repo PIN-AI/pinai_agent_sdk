@@ -98,8 +98,6 @@ class BlockchainIndexer:
                     self.web3.eth.filter(contract_filter).filter_id
                 )
 
-                logger.info(f"New entries: {new_entries}")
-
                 # Process any new events
                 for event in new_entries:
                     self._process_event(event)
@@ -119,7 +117,6 @@ class BlockchainIndexer:
             event: The blockchain event to process
         """
         try:
-            logger.info(f"Processing event: {event}")
             # Extract event signature from first topic
             event_signature = event['topics'][0].hex()
             
