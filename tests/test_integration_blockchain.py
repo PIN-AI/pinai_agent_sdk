@@ -4,7 +4,10 @@ import time
 import logging
 import uuid
 import traceback
+import sys
 from unittest.mock import patch, MagicMock
+# Add the parent directory to sys.path to allow importing the package
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pinai_agent_sdk.pinai_agent_sdk import (
     PINAIAgentSDK,
     AGENT_CATEGORY_SOCIAL,
@@ -125,14 +128,20 @@ def test_blockchain_connection():
             logger.warning(f"Failed to get chain info: {str(e)}, but will continue testing")
         
         # Verify contract loaded
-        assert sdk.contract is not None, "Contract not initialized"
-        logger.info(f"Contract address: {sdk.contract.address}")
+        assert sdk.agent_contract is not None, "Contract not initialized"
+        logger.info(f"Contract address: {sdk.agent_contract.address}")
+
+        assert sdk.intent_matching_contract is not None, "Contract not initialized"
+        logger.info(f"Contract address: {sdk.intent_matching_contract.address}")
         
         # Try calling contract method to verify contract is available
         try:
             # Use a read-only method that doesn't change state
             # Adjust method name according to actual contract
-            contract_call_result = sdk.contract.functions.VERSION().call()
+            contract_call_result = sdk.agent_contract.functions.VERSION().call()
+            logger.info(f"Contract call test successful: {contract_call_result}")
+
+            contract_call_result = sdk.intent_matching_contract.functions.VERSION().call()
             logger.info(f"Contract call test successful: {contract_call_result}")
         except Exception as e:
             logger.warning(f"Contract call test failed: {str(e)}")
@@ -214,7 +223,7 @@ def test_register_agent_with_blockchain():
             # Try to get agent info from blockchain
             try:
                 # Adjust according to actual contract method
-                agent_info = sdk.contract.functions.getAgentByAgentId(agent_id).call()
+                agent_info = sdk.agent_contract.functions.getAgentByAgentId(agent_id).call()
                 logger.info(f"Agent info from blockchain: {agent_info}")
                 
                 # Verify owner address
@@ -308,7 +317,7 @@ def test_register_agent_without_owner():
             # Try to get agent info from blockchain
             try:
                 # Adjust according to actual contract method
-                agent_info = sdk.contract.functions.getAgentByAgentId(agent_id).call()
+                agent_info = sdk.agent_contract.functions.getAgentByAgentId(agent_id).call()
                 logger.info(f"Agent info from blockchain: {agent_info}")
                 
                 # Verify owner is sender address
@@ -410,7 +419,7 @@ def test_unregister_agent_with_blockchain():
             # Try to verify agent status has been updated
             try:
                 # Adjust according to actual contract method
-                agent_status = sdk.contract.functions.getAgentStatus(agent_id).call()
+                agent_status = sdk.agent_contract.functions.getAgentStatus(agent_id).call()
                 logger.info(f"Agent status: {agent_status}")
                 # Status 2 usually means unregistered/inactive
                 assert agent_status == 2, f"Agent status is not 2 (unregistered), but {agent_status}"
@@ -479,7 +488,7 @@ def test_full_agent_lifecycle():
         try:
             logger.info(f"Step 2: Query agent info")
             # Adjust according to actual contract method
-            agent_info = sdk.contract.functions.getAgentByAgentId(agent_id).call()
+            agent_info = sdk.agent_contract.functions.getAgentByAgentId(agent_id).call()
             logger.info(f"Agent info from blockchain: {agent_info}")
             
             # Verify agent info
@@ -519,7 +528,7 @@ def test_full_agent_lifecycle():
         try:
             logger.info(f"Step 4: Verify agent status")
             # Adjust according to actual contract method
-            agent_status = sdk.contract.functions.getAgentStatus(agent_id).call()
+            agent_status = sdk.agent_contract.functions.getAgentStatus(agent_id).call()
             logger.info(f"Agent status: {agent_status}")
             # Status 2 usually means unregistered/inactive
             assert agent_status == 2, f"Agent status is not 2 (unregistered), but {agent_status}"

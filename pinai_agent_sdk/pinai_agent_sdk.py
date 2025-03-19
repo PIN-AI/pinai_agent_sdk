@@ -13,85 +13,16 @@ from typing import Dict, List, Any, Optional, Callable, Union
 from urllib.parse import urljoin
 from web3 import Web3
 from eth_account import Account
+from pinai_agent_sdk.abi import AGENT_CONTRACT_ABI, INTENT_MATCHING_CONTRACT_ABI
+from .indexer import BlockchainIndexer
 
-CONTRACT_ADDRESS = "0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089"
+AGENT_CONTRACT_ADDRESS = "0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089"
+INTENT_MATCHING_CONTRACT_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
 DEFAULT_RPC = "https://sepolia.base.org"
+INTENT_MATCHING_RPC = "http://localhost:8545"
 MIN_STAKE = 0
 REGISTRATION_FEE = 0
 MAX_STRING_LENGTH = 256
-
-CONTRACT_ABI = [
-    # VERSION
-    {
-        "inputs": [],
-        "name": "VERSION",
-        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    # create
-    {
-        "inputs": [
-            {"internalType": "address", "name": "_agentOwner", "type": "address"},
-            {"internalType": "string", "name": "_agentName", "type": "string"},
-            {"internalType": "string", "name": "_serviceEndpoint", "type": "string"},
-            {"internalType": "string", "name": "_description", "type": "string"},
-            {"internalType": "uint256", "name": "_agentId", "type": "uint256"},
-            {"internalType": "bytes32", "name": "_category", "type": "bytes32"}
-        ],
-        "name": "create",
-        "outputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
-        "stateMutability": "payable",
-        "type": "function"
-    },
-    # updateAgentStatusByAgentId
-    {
-        "inputs": [
-            {"internalType": "uint256", "name": "agentId", "type": "uint256"},
-            {"internalType": "enum AgentManager.AgentStatus", "name": "newStatus", "type": "uint8"}
-        ],
-        "name": "updateAgentStatusByAgentId",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    # getAgentByAgentId
-    {
-        "inputs": [{"internalType": "uint256", "name": "agentId", "type": "uint256"}],
-        "name": "getAgentByAgentId",
-        "outputs": [{
-            "components": [
-                {"internalType": "uint256", "name": "tokenId", "type": "uint256"},
-                {"internalType": "uint256", "name": "agentId", "type": "uint256"},
-                {"internalType": "string", "name": "name", "type": "string"},
-                {"internalType": "string", "name": "serviceEndpoint", "type": "string"},
-                {"internalType": "string", "name": "description", "type": "string"},
-                {"internalType": "bytes32", "name": "category", "type": "bytes32"},
-                {"internalType": "address", "name": "owner", "type": "address"},
-                {"internalType": "address", "name": "tba", "type": "address"},
-                {"internalType": "uint256", "name": "stakeAmount", "type": "uint256"},
-                {"internalType": "uint8", "name": "reputationScore", "type": "uint8"},
-                {"internalType": "enum AgentManager.AgentStatus", "name": "status", "type": "uint8"},
-                {"internalType": "uint64", "name": "lastActiveTime", "type": "uint64"},
-                {"internalType": "uint64", "name": "bidCount", "type": "uint64"},
-                {"internalType": "uint64", "name": "dealCount", "type": "uint64"}
-            ],
-            "internalType": "struct AgentManager.Agent",
-            "name": "",
-            "type": "tuple"
-        }],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    # getAgentStatus
-    {
-        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
-        "name": "getAgentStatus",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    }
-]
 
 # Import constants
 from .constants import (
@@ -182,19 +113,40 @@ class PINAIAgentSDK:
         logger.info(f"PINAIAgentSDK initialized with base URL: {base_url}")
         
         self.web3 = None
-        self.contract = None
+        self.agent_contract = None
         self.account = None
+
+        self.intent_matching_contract = None
+        
+        self.indexer = None
         
         if privatekey:
             try:
-                rpc_url = blockchainRPC or DEFAULT_RPC
-                self.web3 = Web3(Web3.HTTPProvider(rpc_url))
-                
+                self.web3 = Web3(Web3.HTTPProvider(DEFAULT_RPC))
                 self.account = Account.from_key(privatekey)
                 
-                self.contract = self.web3.eth.contract(
-                    address=Web3.to_checksum_address(CONTRACT_ADDRESS),
-                    abi=CONTRACT_ABI
+                self.agent_contract = self.web3.eth.contract(
+                    address=Web3.to_checksum_address(AGENT_CONTRACT_ADDRESS),
+                    abi=AGENT_CONTRACT_ABI
+                )
+
+                print("AGENT CONTRACT: ", self.agent_contract)
+
+                self.web3_intent_matching = Web3(Web3.HTTPProvider(blockchainRPC))
+                self.intent_matching_contract = self.web3_intent_matching.eth.contract(
+                    address=Web3.to_checksum_address(INTENT_MATCHING_CONTRACT_ADDRESS),
+                    abi=INTENT_MATCHING_CONTRACT_ABI
+                )
+
+                print("INTENT MATCHING CONTRACT: ", self.intent_matching_contract)
+                
+                # Initialize indexer
+                self.indexer = BlockchainIndexer(
+                    self.web3_intent_matching,
+                    self.agent_contract,
+                    self.account,
+                    self.intent_matching_contract,
+                    base_url
                 )
                 
                 logger.info(f"Blockchain components initialized with account: {self.account.address}")
@@ -412,7 +364,7 @@ class PINAIAgentSDK:
         # Other errors are already handled by _make_request
         
         # If blockchain functionality is enabled, call the smart contract
-        if self.web3 and self.contract and self.account:
+        if self.web3 and self.agent_contract and self.account:
             try:
                 # Get the agent ID from the response
                 agent_id = response.get('id')
@@ -455,7 +407,7 @@ class PINAIAgentSDK:
                 logger.debug(f"  - category: {category} (converted to bytes32)")
                 
                 # Build contract transaction
-                contract_txn = self.contract.functions.create(
+                contract_txn = self.agent_contract.functions.create(
                     owner_address,
                     safe_name,
                     safe_endpoint,
@@ -555,7 +507,7 @@ class PINAIAgentSDK:
             agent_id = self._agent_info["id"]
         
         # If blockchain functionality is enabled, call the smart contract
-        if self.web3 and self.contract and self.account:
+        if self.web3 and self.agent_contract and self.account:
             try:
                 # Get nonce
                 nonce = self.web3.eth.get_transaction_count(self.account.address)
@@ -566,7 +518,7 @@ class PINAIAgentSDK:
                 logger.debug(f"Unregistering agent on blockchain - Agent ID: {agent_id}")
                 
                 # Call updateAgentStatusByAgentId method, set status to 2 (disabled)
-                contract_txn = self.contract.functions.updateAgentStatusByAgentId(
+                contract_txn = self.agent_contract.functions.updateAgentStatusByAgentId(
                     agent_id,
                     2  # Status 2 means disabled
                 ).build_transaction({
@@ -769,6 +721,9 @@ class PINAIAgentSDK:
         """
         # First start message listening (non-blocking mode)
         self._start(on_message_callback=on_message_callback, agent_id=agent_id, blocking=False)
+
+        # Start the indexer + bidding service to index events
+        self._start_indexer_and_bidding_service()
         
         # Then run until interrupted
         try:
@@ -779,6 +734,13 @@ class PINAIAgentSDK:
             logger.info("Keyboard interrupt received, stopping...")
             self.stop()
         
+    def _start_indexer_and_bidding_service(self) -> None:
+        """Start the indexer + bidding service to index events"""
+        if self.indexer:
+            self.indexer.start()
+        else:
+            logger.warning("Blockchain indexer not initialized. Skipping indexer service.")
+
     def run_forever(self) -> None:
         """
         Convenience method to keep the application running until interrupted by user.
@@ -796,15 +758,15 @@ class PINAIAgentSDK:
             self.stop()
         
     def stop(self) -> None:
-        """
-        Stop listening for new messages
-        """
+        """Stop listening for new messages and stop the indexer"""
         if self.polling_thread and self.polling_thread.is_alive():
             self.stop_polling = True
             self.polling_thread.join(timeout=2.0)
             logger.info("Stopped listening for messages")
-        else:
-            logger.warning("No active polling thread to stop")
+        
+        # Stop the indexer
+        if self.indexer:
+            self.indexer.stop()
                 
     def send_message(self, content: str, session_id: str = None, media_type: str = "none", media_url: str = None, meta_data: Dict = None) -> Dict:
         """
@@ -1071,7 +1033,5 @@ class PINAIAgentSDK:
         return CATEGORY_DISPLAY_NAMES[category]
     
     def __del__(self):
-        """
-        Destructor to ensure polling is stopped when object is destroyed
-        """
+        """Destructor to ensure polling and indexer are stopped when object is destroyed"""
         self.stop()
