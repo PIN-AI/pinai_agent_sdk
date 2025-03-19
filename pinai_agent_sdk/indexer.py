@@ -20,7 +20,7 @@ class BlockchainIndexer:
     Blockchain indexer for monitoring and processing smart contract events
     """
     
-    def __init__(self, web3: Web3, agent_contract, account, intent_matching_contract=None, intent_matching_url=None):
+    def __init__(self, web3: Web3, agent_contract, account, intent_matching_contract=None, base_url="http://localhost:3000"):
         """
         Initialize the blockchain indexer
 
@@ -29,20 +29,16 @@ class BlockchainIndexer:
             agent_contract: Agent contract instance
             account: Account instance
             intent_matching_contract: Intent matching contract instance (optional)
-            intent_matching_url: URL for the intent matching service (optional)
         """
         self.web3 = web3
         self.agent_contract = agent_contract
         self.account = account
         self.intent_matching_contract = intent_matching_contract
-        self.intent_matching_url = intent_matching_url
         
         self.stop_indexing = False
         self.indexer_thread = None
         self.indexed_events = []
         
-        # Room tracking
-        self.current_room_id = None
         self.current_order_id = None
         
         # Event signatures
@@ -52,6 +48,8 @@ class BlockchainIndexer:
             Web3.keccak(text=EventSignatures.AddressesTracked).hex(): self._handle_addresses_tracked,
             Web3.keccak(text=EventSignatures.OrderCompleted).hex(): self._handle_order_completed
         }
+
+        self.base_url = base_url
         
     def start(self):
         """Start the indexer service"""
@@ -132,11 +130,6 @@ class BlockchainIndexer:
             
         except Exception as e:
             logger.error(f"Error processing event: {e}")
-            
-    def _get_block_timestamp(self, block_number):
-        """Get timestamp for a block"""
-        block = self.web3.eth.get_block(block_number)
-        return block.timestamp
 
     def _handle_order_created(self, event):
         """Handle OrderCreated event"""
@@ -161,12 +154,7 @@ class BlockchainIndexer:
             logger.error(f"Error handling OrderCreated event: {e}")
 
     def _submit_bid(self, bid_data: Dict) -> None:
-        self.base_url = "http://localhost:3000"
         """Submit a bid to the intent matching service"""
-        if not self.base_url:
-            logger.error("Base URL not set")
-            return
-
         try:
             response = requests.post(
                 f"{self.base_url}/bid",
@@ -189,7 +177,6 @@ class BlockchainIndexer:
             
             # Get order details from contract
             order = self.intent_matching_contract.functions.getOrder(order_id).call()
-            
             self.current_order_id = order_id
 
             # TODO: handle order matched - start agent + personal AI communication

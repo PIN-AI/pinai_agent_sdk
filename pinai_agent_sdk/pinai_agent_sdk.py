@@ -146,7 +146,6 @@ class PINAIAgentSDK:
                     self.agent_contract,
                     self.account,
                     self.intent_matching_contract,
-                    base_url
                 )
                 
                 logger.info(f"Blockchain components initialized with account: {self.account.address}")
