@@ -114,10 +114,8 @@ class PINAIAgentSDK:
         
         self.web3 = None
         self.agent_contract = None
-        self.account = None
-
         self.intent_matching_contract = None
-        
+        self.account = None
         self.indexer = None
         
         if privatekey:
@@ -130,15 +128,11 @@ class PINAIAgentSDK:
                     abi=AGENT_CONTRACT_ABI
                 )
 
-                print("AGENT CONTRACT: ", self.agent_contract)
-
                 self.web3_intent_matching = Web3(Web3.HTTPProvider(blockchainRPC))
                 self.intent_matching_contract = self.web3_intent_matching.eth.contract(
                     address=Web3.to_checksum_address(INTENT_MATCHING_CONTRACT_ADDRESS),
                     abi=INTENT_MATCHING_CONTRACT_ABI
                 )
-
-                print("INTENT MATCHING CONTRACT: ", self.intent_matching_contract)
                 
                 # Initialize indexer
                 self.indexer = BlockchainIndexer(
