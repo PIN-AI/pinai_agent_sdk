@@ -20,7 +20,7 @@ class BlockchainIndexer:
     Blockchain indexer for monitoring and processing smart contract events
     """
     
-    def __init__(self, web3: Web3, agent_contract, account, intent_matching_contract=None, base_url="http://localhost:3000"):
+    def __init__(self, web3: Web3, agent_contract, account, intent_matching_contract=None, base_url="http://localhost:8080"):
         """
         Initialize the blockchain indexer
 
@@ -138,10 +138,10 @@ class BlockchainIndexer:
             
             # Submit bid
             bid_data = {
-                "orderId": order_id,
-                "userId": user_address,
-                "agentId": 0,
-                "amount": 100
+                "order_id": Web3.to_int(order_id),  # Convert to Web3 integer
+                "agent_id": Web3.to_int(0),         # Convert to Web3 integer
+                "amount": Web3.to_int(100),         # Convert to Web3 integer
+                "user_address": user_address        # Addresses don't need conversion
             }
             
             # Submit bid
@@ -154,7 +154,7 @@ class BlockchainIndexer:
         """Submit a bid to the intent matching service"""
         try:
             response = requests.post(
-                f"{self.base_url}/bid",
+                f"{self.base_url}/intent/bid",
                 json=bid_data,
                 headers={"Content-Type": "application/json"}
             )
