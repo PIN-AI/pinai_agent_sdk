@@ -14,7 +14,7 @@ from urllib.parse import urljoin
 from web3 import Web3
 from eth_account import Account
 
-CONTRACT_ADDRESS = "0xD2004b20B39A6b4397df87dadDaEFB0aEfe32089"
+CONTRACT_ADDRESS = "0xFd5A380d3a29c57f3b320c0308afe7Dd89eB73EA"
 DEFAULT_RPC = "https://sepolia.base.org"
 MIN_STAKE = 0
 REGISTRATION_FEE = 0
@@ -373,9 +373,9 @@ class PINAIAgentSDK:
         if not name or not description or not category:
             raise ValidationError("Agent name, description, and category are required fields")
             
-        if category not in CATEGORY_DISPLAY_NAMES:
-            categories_str = ", ".join([f"{k} ({v})" for k, v in CATEGORY_DISPLAY_NAMES.items()])
-            raise ValidationError(f"Invalid category. Must be one of: {categories_str}")
+        # if category not in CATEGORY_DISPLAY_NAMES:
+        #     categories_str = ", ".join([f"{k} ({v})" for k, v in CATEGORY_DISPLAY_NAMES.items()])
+        #     raise ValidationError(f"Invalid category. Must be one of: {categories_str}")
             
         data = {
             "name": name,
@@ -444,7 +444,8 @@ class PINAIAgentSDK:
                 owner_address = Web3.to_checksum_address(owner_address)
                 
                 # Convert category to bytes32
-                category_bytes = self.web3.to_bytes(text=category).ljust(32, b'\0')
+                # category_bytes = self.web3.to_bytes(text=category).ljust(32, b'\0')
+                category_bytes = category
                 
                 logger.debug(f"Building contract transaction with parameters:")
                 logger.debug(f"  - owner_address: {owner_address}")
